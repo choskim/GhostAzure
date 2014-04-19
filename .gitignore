@@ -32,8 +32,6 @@ projectFilesBackup
 .dist
 
 /core/client/tpl/hbs-tpl.js
-/core/client/assets/css
-/core/client/assets/fonts
 /core/server/data/export/exported*
 /docs
 /_site
@@ -50,11 +48,6 @@ CHANGELOG.md
 
 # Casper generated files
 /core/test/functional/*.png
-
-config.js
-
-# Built asset files
-/core/built
 
 # Coverage reports
 coverage.html
