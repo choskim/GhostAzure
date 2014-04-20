@@ -1274,6 +1274,8 @@ hr {
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4); }
   .panel-inverted a {
     color: #FFF; }
+    .panel-inverted a:hover {
+      color: #CCCC2E; }
 
 .cover-navigation {
   margin-top: 10px; }
@@ -1387,7 +1389,7 @@ nav {
     opacity: .8; }
     .navigation__item a:hover {
       color: #FFF;
-      border-color: #FFF;
+      border-color: #CCCC2E;
       opacity: 1; }
 
 .navigation--social {
