@@ -85,6 +85,7 @@
             if (method === 'create' || method === 'update') {
                 options.data = JSON.stringify({posts: [this.attributes]});
                 options.contentType = 'application/json';
+                options.url = model.url() + '?include=tags';
             }
 
             return Backbone.Model.prototype.sync.apply(this, arguments);
@@ -103,12 +104,12 @@
 
         parse: function (resp) {
             if (_.isArray(resp.posts)) {
-                this.limit = resp.limit;
-                this.currentPage = resp.page;
-                this.totalPages = resp.pages;
-                this.totalPosts = resp.total;
-                this.nextPage = resp.next;
-                this.prevPage = resp.prev;
+                this.limit = resp.meta.pagination.limit;
+                this.currentPage = resp.meta.pagination.page;
+                this.totalPages = resp.meta.pagination.pages;
+                this.totalPosts = resp.meta.pagination.total;
+                this.nextPage = resp.meta.pagination.next;
+                this.prevPage = resp.meta.pagination.prev;
                 return resp.posts;
             }
             return resp;
@@ -116,24 +117,49 @@
     });
 
 }());
-
-/*global Ghost */
+/*global Backbone, Ghost, _ */
 (function () {
     'use strict';
     //id:0 is used to issue PUT requests
     Ghost.Models.Settings = Ghost.ProgressModel.extend({
         url: Ghost.paths.apiRoot + '/settings/?type=blog,theme,app',
-        id: '0'
+        id: '0',
+
+        parse: function (response) {
+            var result = _.reduce(response.settings, function (settings, setting) {
+                settings[setting.key] = setting.value;
+
+                return settings;
+            }, {});
+
+            return result;
+        },
+
+        sync: function (method, model, options) {
+            var settings = _.map(this.attributes, function (value, key) {
+                return { key: key, value: value };
+            });
+            //wrap settings in {settings: [{...}]}
+            if (method === 'update') {
+                options.data = JSON.stringify({settings: settings});
+                options.contentType = 'application/json';
+            }
+
+            return Backbone.Model.prototype.sync.apply(this, arguments);
+        }
     });
 
 }());
-
 /*global Ghost */
 (function () {
     'use strict';
 
     Ghost.Collections.Tags = Ghost.ProgressCollection.extend({
-        url: Ghost.paths.apiRoot + '/tags/'
+        url: Ghost.paths.apiRoot + '/tags/',
+
+        parse: function (resp) {
+            return resp.tags;
+        }
     });
 }());
 
@@ -142,7 +168,7 @@
     'use strict';
 
     Ghost.Models.Themes = Backbone.Model.extend({
-        url: Ghost.paths.apiRoot + '/themes'
+        url: Ghost.paths.apiRoot + '/themes/'
     });
 
 }());
@@ -186,12 +212,31 @@
 
 }());
 
-/*global Ghost */
+/*global Ghost,Backbone */
 (function () {
     'use strict';
 
     Ghost.Models.User = Ghost.ProgressModel.extend({
-        url: Ghost.paths.apiRoot + '/users/me/'
+        url: Ghost.paths.apiRoot + '/users/me/',
+
+        parse: function (resp) {
+            // unwrap user from {users: [{...}]}
+            if (resp.users) {
+                resp = resp.users[0];
+            }
+
+            return resp;
+        },
+
+        sync: function (method, model, options) {
+            // wrap user in {users: [{...}]}
+            if (method === 'create' || method === 'update') {
+                options.data = JSON.stringify({users: [this.attributes]});
+                options.contentType = 'application/json';
+            }
+
+            return Backbone.Model.prototype.sync.apply(this, arguments);
+        }
     });
 
 //    Ghost.Collections.Users = Backbone.Collection.extend({
@@ -199,7 +244,6 @@
 //    });
 
 }());
-
 /*global Ghost */
 (function () {
     'use strict';

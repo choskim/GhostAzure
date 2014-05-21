@@ -25356,10 +25356,10 @@ $.widget( "ui.tooltip", {
 
     /**
      * Allows to check contents of each element exactly
-     * @param obj
-     * @param index
-     * @param meta
-     * @param stack
+     * @param {Object} obj
+     * @param {*} index
+     * @param {*} meta
+     * @param {*} stack
      * @returns {boolean}
      */
     $.expr[":"].containsExact = function (obj, index, meta, stack) {
@@ -25480,7 +25480,7 @@ $.widget( "ui.tooltip", {
      * Set interactions for all menus and overlays
      * This finds all visible 'hideClass' elements and hides them upon clicking away from the element itself.
      * A callback can be defined to customise the results. By default it will hide the element.
-     * @param callback
+     * @param {Function} callback
      */
     $.fn.hideAway = function (callback) {
         var $self = $(this);
@@ -25623,7 +25623,7 @@ $.widget( "ui.tooltip", {
                         $dropzone.trigger("uploadfailure", [data.result]);
                         $dropzone.find('.js-upload-progress-bar').addClass('fail');
                         if (data.jqXHR.status === 413) {
-                            $dropzone.find('div.js-fail').text("The image you uploaded was too big.");
+                            $dropzone.find('div.js-fail').text("The image you uploaded was larger than the maximum file size your server allows.");
                         } else if (data.jqXHR.status === 415) {
                             $dropzone.find('div.js-fail').text("The image type you uploaded is not supported. Please use .PNG, .JPG, .GIF, .SVG.");
                         } else {

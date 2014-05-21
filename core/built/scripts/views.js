@@ -96,7 +96,14 @@
             if (request.status !== 200) {
                 try {
                     // Try to parse out the error, or default to "Unknown"
-                    message =  request.responseJSON.error || "Unknown Error";
+                    if (request.responseJSON.errors && _.isArray(request.responseJSON.errors)) {
+                        message = '';
+                        _.each(request.responseJSON.errors, function (errorItem) {
+                            message += '<br/>' + errorItem.message;
+                        });
+                    } else {
+                        message =  request.responseJSON.error || "Unknown Error";
+                    }
                 } catch (e) {
                     msgDetail = request.status ? request.status + " - " + request.statusText : "Server was not available";
                     message = "The server returned an error (" + msgDetail + ").";
@@ -689,7 +696,8 @@
         events: {
             "click .settings-menu a": "handleMenuClick",
             "click #startupload": "handleUploadClick",
-            "click .js-delete": "handleDeleteClick"
+            "click .js-delete": "handleDeleteClick",
+            "click #sendtestmail": "handleSendTestMailClick"
         },
 
         initialize: function () {
@@ -735,7 +743,7 @@
                 error: function (response) {
                     $('#startupload').text('Import');
                     var responseJSON = response.responseJSON,
-                        message = responseJSON && responseJSON.error ? responseJSON.error : 'unknown';
+                        message = responseJSON && responseJSON.errors[0].message ? responseJSON.errors[0].message : 'unknown';
                     Ghost.notifications.addItem({
                         type: 'error',
                         message: ['A problem was encountered while importing new content to your blog. Error: ', message].join(''),
@@ -805,7 +813,7 @@
                                         },
                                         error: function onError(response) {
                                             var responseText = JSON.parse(response.responseText),
-                                                message = responseText && responseText.error ? responseText.error : 'unknown';
+                                                message = responseText && responseText.errors[0].message ? responseText.errors[0].message : 'unknown';
                                             Ghost.notifications.addItem({
                                                 type: 'error',
                                                 message: ['A problem was encountered while deleting content from your blog. Error: ', message].join(''),
@@ -837,7 +845,36 @@
                     }
                 }
             }));
-        }
+        },
+        
+        handleSendTestMailClick: function (ev) {
+            ev.preventDefault();
+        
+            $.ajax({
+                url: Ghost.paths.apiRoot + '/mail/test/',
+                type: 'POST',
+                headers: {
+                    'X-CSRF-Token': $("meta[name='csrf-param']").attr('content')
+                },
+                success: function onSuccess(response) {
+                    Ghost.notifications.addItem({
+                        type: 'success',
+                        message: ['Check your email for the test message: ', response.message].join(''),
+                        status: 'passive'
+                    });
+                },
+                error: function onError(response) {
+                    var responseText = JSON.parse(response.responseText),
+                        message = responseText && responseText.errors[0].message ? responseText.errors[0].message : 'unknown';
+                    Ghost.notifications.addItem({
+                        type: 'error',
+                        message: ['A problem was encountered while sending the test email: ', message].join(''),
+                        status: 'passive'
+                    });
+
+                }
+            });
+        },
     });
 }());
 
@@ -2755,7 +2792,7 @@
         blog: function () {
             var posts = new Ghost.Collections.Posts();
             NProgress.start();
-            posts.fetch({ data: { status: 'all', staticPages: 'all'} }).then(function () {
+            posts.fetch({ data: { status: 'all', staticPages: 'all', include: 'author'} }).then(function () {
                 Ghost.currentView = new Ghost.Views.Blog({ el: '#main', collection: posts });
                 NProgress.done();
             });
@@ -2782,7 +2819,7 @@
             post.urlRoot = Ghost.paths.apiRoot + '/posts';
             if (id) {
                 post.id = id;
-                post.fetch({ data: {status: 'all'}}).then(function () {
+                post.fetch({ data: {status: 'all', include: 'tags'}}).then(function () {
                     Ghost.currentView = new Ghost.Views.Editor({ el: '#main', model: post });
                 });
             } else {

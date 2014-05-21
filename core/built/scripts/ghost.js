@@ -25356,10 +25356,10 @@ $.widget( "ui.tooltip", {
 
     /**
      * Allows to check contents of each element exactly
-     * @param obj
-     * @param index
-     * @param meta
-     * @param stack
+     * @param {Object} obj
+     * @param {*} index
+     * @param {*} meta
+     * @param {*} stack
      * @returns {boolean}
      */
     $.expr[":"].containsExact = function (obj, index, meta, stack) {
@@ -25480,7 +25480,7 @@ $.widget( "ui.tooltip", {
      * Set interactions for all menus and overlays
      * This finds all visible 'hideClass' elements and hides them upon clicking away from the element itself.
      * A callback can be defined to customise the results. By default it will hide the element.
-     * @param callback
+     * @param {Function} callback
      */
     $.fn.hideAway = function (callback) {
         var $self = $(this);
@@ -25623,7 +25623,7 @@ $.widget( "ui.tooltip", {
                         $dropzone.trigger("uploadfailure", [data.result]);
                         $dropzone.find('.js-upload-progress-bar').addClass('fail');
                         if (data.jqXHR.status === 413) {
-                            $dropzone.find('div.js-fail').text("The image you uploaded was too big.");
+                            $dropzone.find('div.js-fail').text("The image you uploaded was larger than the maximum file size your server allows.");
                         } else if (data.jqXHR.status === 415) {
                             $dropzone.find('div.js-fail').text("The image type you uploaded is not supported. Please use .PNG, .JPG, .GIF, .SVG.");
                         } else {
@@ -48820,7 +48820,7 @@ if (typeof define !== 'undefined' && define.amd) {
             self.replace();
         },
         replace: function () {
-            var text = this.elem.getSelection(), pass = true, cursor = this.elem.getCursor(), line = this.elem.getLine(cursor.line), md, word, letterCount, converter;
+            var text = this.elem.getSelection(), pass = true, cursor = this.elem.getCursor(), line = this.elem.getLine(cursor.line), md, word, letterCount, converter, textIndex, position;
             switch (this.style) {
             case 'h1':
                 this.elem.setLine(cursor.line, '# ' + line);
@@ -48855,7 +48855,13 @@ if (typeof define !== 'undefined' && define.amd) {
             case 'link':
                 md = this.options.syntax.link.replace('$1', text);
                 this.elem.replaceSelection(md, 'end');
-                this.elem.setSelection({line: cursor.line, ch: cursor.ch - 8}, {line: cursor.line, ch: cursor.ch - 1});
+                if (!text) {
+                    this.elem.setCursor(cursor.line, cursor.ch + 1);
+                } else {
+                    textIndex = line.indexOf(text, cursor.ch - text.length);
+                    position = textIndex + md.length - 1;
+                    this.elem.setSelection({line: cursor.line, ch: position - 7}, {line: cursor.line, ch: position});
+                }
                 pass = false;
                 break;
             case 'image':
@@ -49917,7 +49923,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
   
 
 
-  return "<section class=\"markdown-help-container\">\n    <table class=\"modal-markdown-help-table\">\n        <thead>\n            <tr>\n                <th>Result</th>\n                <th>Markdown</th>\n                <th>Shortcut</th>\n            </tr>\n        </thead>\n        <tbody>\n            <tr>\n                <td><strong>Bold</strong></td>\n                <td>**text**</td>\n                <td>Ctrl / Cmd + B</td>\n            </tr>\n            <tr>\n                <td><em>Emphasize</em></td>\n                <td>*text*</td>\n                <td>Ctrl / Cmd + I</td>\n            </tr>\n            <tr>\n                <td>Strike-through</td>\n                <td>~~text~~</td>\n                <td>Ctrl + Alt + U</td>\n            </tr>\n            <tr>\n                <td><a href=\"#\">Link</a></td>\n                <td>[title](http://)</td>\n                <td>Ctrl + Shift + L</td>\n            </tr>\n            <tr>\n                <td>Image</td>\n                <td>![alt](http://)</td>\n                <td>Ctrl + Shift + I</td>\n            </tr>\n            <tr>\n                <td>List</td>\n                <td>* item</td>\n                <td>Ctrl + L</td>\n            </tr>\n            <tr>\n                <td>Blockquote</td>\n                <td>> quote</td>\n                <td>Ctrl + Q</td>\n            </tr>\n            <tr>\n                <td>H1</td>\n                <td># Heading</td>\n                <td>Ctrl + Alt + 1</td>\n            </tr>\n            <tr>\n                <td>H2</td>\n                <td>## Heading</td>\n                <td>Ctrl + Alt + 2</td>\n            </tr>\n            <tr>\n                <td>H3</td>\n                <td>### Heading</td>\n                <td>Ctrl + Alt + 3</td>\n            </tr>\n            <tr>\n                <td><code>Inline Code</code></td>\n                <td>`code`</td>\n                <td>Cmd + K / Ctrl + Shift + K</td>\n            </tr>\n        </tbody>\n    </table>\n    For further Markdown syntax reference: <a href=\"http://daringfireball.net/projects/markdown/syntax\" target=\"_blank\">Markdown Documentation</a>\n</section>\n";
+  return "<section class=\"markdown-help-container\">\n    <table class=\"modal-markdown-help-table\">\n        <thead>\n        <tr>\n            <th>Result</th>\n            <th>Markdown</th>\n            <th>Shortcut</th>\n        </tr>\n        </thead>\n        <tbody>\n        <tr>\n            <td><strong>Bold</strong></td>\n            <td>**text**</td>\n            <td>Ctrl / Cmd + B</td>\n        </tr>\n        <tr>\n            <td><em>Emphasize</em></td>\n            <td>*text*</td>\n            <td>Ctrl / Cmd + I</td>\n        </tr>\n        <tr>\n            <td>Strike-through</td>\n            <td>~~text~~</td>\n            <td>Ctrl + Alt + U</td>\n        </tr>\n        <tr>\n            <td><a href=\"#\">Link</a></td>\n            <td>[title](http://)</td>\n            <td>Ctrl + Shift + L</td>\n        </tr>\n        <tr>\n            <td>Image</td>\n            <td>![alt](http://)</td>\n            <td>Ctrl + Shift + I</td>\n        </tr>\n        <tr>\n            <td>List</td>\n            <td>* item</td>\n            <td>Ctrl + L</td>\n        </tr>\n        <tr>\n            <td>Blockquote</td>\n            <td>> quote</td>\n            <td>Ctrl + Q</td>\n        </tr>\n        <tr>\n            <td>H1</td>\n            <td># Heading</td>\n            <td>Ctrl + Alt + 1</td>\n        </tr>\n        <tr>\n            <td>H2</td>\n            <td>## Heading</td>\n            <td>Ctrl + Alt + 2</td>\n        </tr>\n        <tr>\n            <td>H3</td>\n            <td>### Heading</td>\n            <td>Ctrl + Alt + 3</td>\n        </tr>\n        <tr>\n            <td><code>Inline Code</code></td>\n            <td>`code`</td>\n            <td>Cmd + K / Ctrl + Shift + K</td>\n        </tr>\n        </tbody>\n    </table>\n    For further Markdown syntax reference: <a href=\"http://daringfireball.net/projects/markdown/syntax\" target=\"_blank\">Markdown Documentation</a>\n</section>";
   });
 
 this["JST"]["modals/uploadImage"] = Handlebars.template(function (Handlebars,depth0,helpers,partials,data) {
@@ -50439,6 +50445,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
             if (method === 'create' || method === 'update') {
                 options.data = JSON.stringify({posts: [this.attributes]});
                 options.contentType = 'application/json';
+                options.url = model.url() + '?include=tags';
             }
 
             return Backbone.Model.prototype.sync.apply(this, arguments);
@@ -50457,12 +50464,12 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
         parse: function (resp) {
             if (_.isArray(resp.posts)) {
-                this.limit = resp.limit;
-                this.currentPage = resp.page;
-                this.totalPages = resp.pages;
-                this.totalPosts = resp.total;
-                this.nextPage = resp.next;
-                this.prevPage = resp.prev;
+                this.limit = resp.meta.pagination.limit;
+                this.currentPage = resp.meta.pagination.page;
+                this.totalPages = resp.meta.pagination.pages;
+                this.totalPosts = resp.meta.pagination.total;
+                this.nextPage = resp.meta.pagination.next;
+                this.prevPage = resp.meta.pagination.prev;
                 return resp.posts;
             }
             return resp;
@@ -50470,24 +50477,49 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
     });
 
 }());
-
-/*global Ghost */
+/*global Backbone, Ghost, _ */
 (function () {
     'use strict';
     //id:0 is used to issue PUT requests
     Ghost.Models.Settings = Ghost.ProgressModel.extend({
         url: Ghost.paths.apiRoot + '/settings/?type=blog,theme,app',
-        id: '0'
+        id: '0',
+
+        parse: function (response) {
+            var result = _.reduce(response.settings, function (settings, setting) {
+                settings[setting.key] = setting.value;
+
+                return settings;
+            }, {});
+
+            return result;
+        },
+
+        sync: function (method, model, options) {
+            var settings = _.map(this.attributes, function (value, key) {
+                return { key: key, value: value };
+            });
+            //wrap settings in {settings: [{...}]}
+            if (method === 'update') {
+                options.data = JSON.stringify({settings: settings});
+                options.contentType = 'application/json';
+            }
+
+            return Backbone.Model.prototype.sync.apply(this, arguments);
+        }
     });
 
 }());
-
 /*global Ghost */
 (function () {
     'use strict';
 
     Ghost.Collections.Tags = Ghost.ProgressCollection.extend({
-        url: Ghost.paths.apiRoot + '/tags/'
+        url: Ghost.paths.apiRoot + '/tags/',
+
+        parse: function (resp) {
+            return resp.tags;
+        }
     });
 }());
 
@@ -50496,7 +50528,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
     'use strict';
 
     Ghost.Models.Themes = Backbone.Model.extend({
-        url: Ghost.paths.apiRoot + '/themes'
+        url: Ghost.paths.apiRoot + '/themes/'
     });
 
 }());
@@ -50540,12 +50572,31 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 
 }());
 
-/*global Ghost */
+/*global Ghost,Backbone */
 (function () {
     'use strict';
 
     Ghost.Models.User = Ghost.ProgressModel.extend({
-        url: Ghost.paths.apiRoot + '/users/me/'
+        url: Ghost.paths.apiRoot + '/users/me/',
+
+        parse: function (resp) {
+            // unwrap user from {users: [{...}]}
+            if (resp.users) {
+                resp = resp.users[0];
+            }
+
+            return resp;
+        },
+
+        sync: function (method, model, options) {
+            // wrap user in {users: [{...}]}
+            if (method === 'create' || method === 'update') {
+                options.data = JSON.stringify({users: [this.attributes]});
+                options.contentType = 'application/json';
+            }
+
+            return Backbone.Model.prototype.sync.apply(this, arguments);
+        }
     });
 
 //    Ghost.Collections.Users = Backbone.Collection.extend({
@@ -50553,7 +50604,6 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
 //    });
 
 }());
-
 /*global Ghost */
 (function () {
     'use strict';
@@ -50696,7 +50746,14 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
             if (request.status !== 200) {
                 try {
                     // Try to parse out the error, or default to "Unknown"
-                    message =  request.responseJSON.error || "Unknown Error";
+                    if (request.responseJSON.errors && _.isArray(request.responseJSON.errors)) {
+                        message = '';
+                        _.each(request.responseJSON.errors, function (errorItem) {
+                            message += '<br/>' + errorItem.message;
+                        });
+                    } else {
+                        message =  request.responseJSON.error || "Unknown Error";
+                    }
                 } catch (e) {
                     msgDetail = request.status ? request.status + " - " + request.statusText : "Server was not available";
                     message = "The server returned an error (" + msgDetail + ").";
@@ -51289,7 +51346,8 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
         events: {
             "click .settings-menu a": "handleMenuClick",
             "click #startupload": "handleUploadClick",
-            "click .js-delete": "handleDeleteClick"
+            "click .js-delete": "handleDeleteClick",
+            "click #sendtestmail": "handleSendTestMailClick"
         },
 
         initialize: function () {
@@ -51335,7 +51393,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
                 error: function (response) {
                     $('#startupload').text('Import');
                     var responseJSON = response.responseJSON,
-                        message = responseJSON && responseJSON.error ? responseJSON.error : 'unknown';
+                        message = responseJSON && responseJSON.errors[0].message ? responseJSON.errors[0].message : 'unknown';
                     Ghost.notifications.addItem({
                         type: 'error',
                         message: ['A problem was encountered while importing new content to your blog. Error: ', message].join(''),
@@ -51405,7 +51463,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
                                         },
                                         error: function onError(response) {
                                             var responseText = JSON.parse(response.responseText),
-                                                message = responseText && responseText.error ? responseText.error : 'unknown';
+                                                message = responseText && responseText.errors[0].message ? responseText.errors[0].message : 'unknown';
                                             Ghost.notifications.addItem({
                                                 type: 'error',
                                                 message: ['A problem was encountered while deleting content from your blog. Error: ', message].join(''),
@@ -51437,7 +51495,36 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
                     }
                 }
             }));
-        }
+        },
+        
+        handleSendTestMailClick: function (ev) {
+            ev.preventDefault();
+        
+            $.ajax({
+                url: Ghost.paths.apiRoot + '/mail/test/',
+                type: 'POST',
+                headers: {
+                    'X-CSRF-Token': $("meta[name='csrf-param']").attr('content')
+                },
+                success: function onSuccess(response) {
+                    Ghost.notifications.addItem({
+                        type: 'success',
+                        message: ['Check your email for the test message: ', response.message].join(''),
+                        status: 'passive'
+                    });
+                },
+                error: function onError(response) {
+                    var responseText = JSON.parse(response.responseText),
+                        message = responseText && responseText.errors[0].message ? responseText.errors[0].message : 'unknown';
+                    Ghost.notifications.addItem({
+                        type: 'error',
+                        message: ['A problem was encountered while sending the test email: ', message].join(''),
+                        status: 'passive'
+                    });
+
+                }
+            });
+        },
     });
 }());
 
@@ -53355,7 +53442,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
         blog: function () {
             var posts = new Ghost.Collections.Posts();
             NProgress.start();
-            posts.fetch({ data: { status: 'all', staticPages: 'all'} }).then(function () {
+            posts.fetch({ data: { status: 'all', staticPages: 'all', include: 'author'} }).then(function () {
                 Ghost.currentView = new Ghost.Views.Blog({ el: '#main', collection: posts });
                 NProgress.done();
             });
@@ -53382,7 +53469,7 @@ helpers = this.merge(helpers, Handlebars.helpers); data = data || {};
             post.urlRoot = Ghost.paths.apiRoot + '/posts';
             if (id) {
                 post.id = id;
-                post.fetch({ data: {status: 'all'}}).then(function () {
+                post.fetch({ data: {status: 'all', include: 'tags'}}).then(function () {
                     Ghost.currentView = new Ghost.Views.Editor({ el: '#main', model: post });
                 });
             } else {
