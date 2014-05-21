@@ -48,7 +48,7 @@ config = {
     // When running Ghost in the wild, use the production environment
     // Configure your URL and mail settings here
     production: {
-        url: 'http://www.choskim.me/',
+        url: 'http://chochomon.azurewebsites.net/',
         mail: {},
         database: {
             client: 'sqlite3',
