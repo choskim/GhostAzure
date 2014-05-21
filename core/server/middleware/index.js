@@ -5,7 +5,7 @@
 var api         = require('../api'),
     BSStore     = require('../bookshelf-session'),
     config      = require('../config'),
-    errors      = require('../errorHandling'),
+    errors      = require('../errors'),
     express     = require('express'),
     fs          = require('fs'),
     hbs         = require('express-hbs'),
@@ -39,11 +39,11 @@ function ghostLocals(req, res, next) {
     if (res.isAdmin) {
         res.locals.csrfToken = req.csrfToken();
         when.all([
-            api.users.read.call({user: req.session.user}, {id: req.session.user}),
+            api.users.read({id: req.session.user}, {context: {user: req.session.user}}),
             api.notifications.browse()
         ]).then(function (values) {
-            var currentUser = values[0],
-                notifications = values[1];
+            var currentUser = values[0].users[0],
+                notifications = values[1].notifications;
 
             _.extend(res.locals,  {
                 currentUser: {
@@ -56,9 +56,10 @@ function ghostLocals(req, res, next) {
             next();
         }).otherwise(function () {
             // Only show passive notifications
+            // ToDo: Remove once ember handles passive notifications.
             api.notifications.browse().then(function (notifications) {
                 _.extend(res.locals, {
-                    messages: _.reject(notifications, function (notification) {
+                    messages: _.reject(notifications.notifications, function (notification) {
                         return notification.status !== 'passive';
                     })
                 });
@@ -70,19 +71,34 @@ function ghostLocals(req, res, next) {
     }
 }
 
+function initThemeData(secure) {
+    var themeConfig = config.theme();
+    if (secure && config().urlSSL) {
+        // For secure requests override .url property with the SSL version
+        themeConfig = _.clone(themeConfig);
+        themeConfig.url = config().urlSSL.replace(/\/$/, '');
+    }
+    return themeConfig;
+}
+
 // ### InitViews Middleware
 // Initialise Theme or Admin Views
 function initViews(req, res, next) {
     /*jslint unparam:true*/
 
     if (!res.isAdmin) {
-        hbs.updateTemplateOptions({ data: {blog: config.theme()} });
+        var themeData = initThemeData(req.secure);
+        hbs.updateTemplateOptions({ data: {blog: themeData} });
         expressServer.engine('hbs', expressServer.get('theme view engine'));
         expressServer.set('views', path.join(config().paths.themePath, expressServer.get('activeTheme')));
     } else {
         expressServer.engine('hbs', expressServer.get('admin view engine'));
         expressServer.set('views', config().paths.adminViews);
     }
+
+    // Pass 'secure' flag to the view engine
+    // so that templates can choose 'url' vs 'urlSSL'
+    res.locals.secure = req.secure;
 
     next();
 }
@@ -134,7 +150,9 @@ function manageAdminAndTheme(req, res, next) {
         expressServer.enable(expressServer.get('activeTheme'));
         expressServer.disable('admin');
     }
-    api.settings.read('activeTheme').then(function (activeTheme) {
+    api.settings.read({context: {internal: true}, key: 'activeTheme'}).then(function (response) {
+        var activeTheme = response.settings[0];
+
         // Check if the theme changed
         if (activeTheme.value !== expressServer.get('activeTheme')) {
             // Change theme
@@ -184,9 +202,20 @@ function isSSLrequired(isAdmin) {
 function checkSSL(req, res, next) {
     if (isSSLrequired(res.isAdmin)) {
         if (!req.secure) {
+            var forceAdminSSL = config().forceAdminSSL,
+                redirectUrl;
+
+            // Check if forceAdminSSL: { redirect: false } is set, which means
+            // we should just deny non-SSL access rather than redirect
+            if (forceAdminSSL && forceAdminSSL.redirect !== undefined && !forceAdminSSL.redirect) {
+                return res.send(403);
+            }
+
+            redirectUrl = url.parse(config().urlSSL || config().url);
             return res.redirect(301, url.format({
                 protocol: 'https:',
-                hostname: url.parse(config().url).hostname,
+                hostname: redirectUrl.hostname,
+                port: redirectUrl.port,
                 pathname: req.path,
                 query: req.query
             }));
@@ -211,7 +240,7 @@ function robots() {
                     if (err) {
                         return next(err);
                     }
-                    
+
                     content = {
                         headers: {
                             'Content-Type': 'text/plain',
@@ -266,7 +295,8 @@ module.exports = function (server, dbHash) {
     expressServer.use(manageAdminAndTheme);
 
     // Admin only config
-    expressServer.use(subdir + '/ghost', middleware.whenEnabled('admin', express['static'](path.join(corePath, '/client/assets'), {maxAge: ONE_YEAR_MS})));
+    expressServer.use(subdir + '/ghost', middleware.whenEnabled('admin', express['static'](path.join(corePath, '/clientold/assets'), {maxAge: ONE_YEAR_MS})));
+    expressServer.use(subdir + '/ghost/ember', middleware.whenEnabled('admin', express['static'](path.join(corePath, '/client/assets'), {maxAge: ONE_YEAR_MS})));
 
     // Force SSL
     // NOTE: Importantly this is _after_ the check above for admin-theme static resources,
@@ -313,6 +343,7 @@ module.exports = function (server, dbHash) {
     expressServer.use(subdir + '/api/', middleware.cacheControl('private'));
     expressServer.use(subdir + '/ghost/', middleware.cacheControl('private'));
 
+
     // enable authentication; has to be done before CSRF handling
     expressServer.use(middleware.authenticate);
 
@@ -321,8 +352,11 @@ module.exports = function (server, dbHash) {
 
     // local data
     expressServer.use(ghostLocals);
+
     // So on every request we actually clean out redundant passive notifications from the server side
+    // ToDo: Remove when ember handles passive notifications.
     expressServer.use(middleware.cleanNotifications);
+
      // Initialise the views
     expressServer.use(initViews);
 

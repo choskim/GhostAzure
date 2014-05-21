@@ -14,7 +14,7 @@ describe('App Setting Model', function () {
     before(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     beforeEach(function (done) {
@@ -24,53 +24,53 @@ describe('App Setting Model', function () {
             })
             .then(function () {
                 done();
-            }, done);
+            }).catch(done);
     });
 
     afterEach(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     after(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
-    it('can browse', function (done) {
-        AppSettingModel.browse().then(function (results) {
+    it('can findAll', function (done) {
+        AppSettingModel.findAll().then(function (results) {
 
             should.exist(results);
 
             results.length.should.be.above(0);
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
-    it('can read', function (done) {
-        AppSettingModel.read({id: 1}).then(function (foundAppSetting) {
+    it('can findOne', function (done) {
+        AppSettingModel.findOne({id: 1}).then(function (foundAppSetting) {
             should.exist(foundAppSetting);
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
     it('can edit', function (done) {
-        AppSettingModel.read({id: 1}).then(function (foundAppSetting) {
+        AppSettingModel.findOne({id: 1}).then(function (foundAppSetting) {
             should.exist(foundAppSetting);
 
             return foundAppSetting.set({value: "350"}).save();
         }).then(function () {
-            return AppSettingModel.read({id: 1});
+            return AppSettingModel.findOne({id: 1});
         }).then(function (updatedAppSetting) {
             should.exist(updatedAppSetting);
 
             updatedAppSetting.get("value").should.equal("350");
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 });

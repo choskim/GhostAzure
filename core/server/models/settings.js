@@ -2,7 +2,7 @@ var Settings,
     ghostBookshelf = require('./base'),
     uuid           = require('node-uuid'),
     _              = require('lodash'),
-    errors         = require('../errorHandling'),
+    errors         = require('../errors'),
     when           = require('when'),
     validation     = require('../data/validation'),
 
@@ -14,7 +14,6 @@ var Settings,
 function parseDefaultSettings() {
     var defaultSettingsInCategories = require('../data/default-settings.json'),
         defaultSettingsFlattened = {};
-
 
     _.each(defaultSettingsInCategories, function (settings, categoryName) {
         _.each(settings, function (setting, settingName) {
@@ -42,10 +41,11 @@ Settings = ghostBookshelf.Model.extend({
     },
 
     validate: function () {
-        validation.validateSchema(this.tableName, this.toJSON());
-        validation.validateSettings(defaultSettings, this);
+        var self = this;
+        return when(validation.validateSchema(self.tableName, self.toJSON())).then(function () {
+            return validation.validateSettings(defaultSettings, self);
+        });
     },
-
 
     saving: function () {
          // disabling sanitization until we can implement a better version
@@ -58,32 +58,60 @@ Settings = ghostBookshelf.Model.extend({
     }
 
 }, {
-    read: function (_key) {
-        // Allow for just passing the key instead of attributes
-        if (!_.isObject(_key)) {
-            _key = { key: _key };
+    /**
+    * Returns an array of keys permitted in a method's `options` hash, depending on the current method.
+    * @param {String} methodName The name of the method to check valid options for.
+    * @return {Array} Keys allowed in the `options` hash of the model's method.
+    */
+    permittedOptions: function (methodName) {
+        var options = ghostBookshelf.Model.permittedOptions(),
+
+            // whitelists for the `options` hash argument on methods, by method name.
+            // these are the only options that can be passed to Bookshelf / Knex.
+            validOptions = {
+                add: ['user'],
+                edit: ['user']
+            };
+
+        if (validOptions[methodName]) {
+            options = options.concat(validOptions[methodName]);
         }
-        return when(ghostBookshelf.Model.read.call(this, _key)).then(function (element) {
-            return element;
-        });
+
+        return options;
     },
 
-    edit: function (_data, options) {
+    findOne: function (options) {
+        // Allow for just passing the key instead of attributes
+        if (!_.isObject(options)) {
+            options = { key: options };
+        }
+        return when(ghostBookshelf.Model.findOne.call(this, options));
+    },
 
-        if (!Array.isArray(_data)) {
-            _data = [_data];
+    edit: function (data, options) {
+        var self = this;
+        options = this.filterOptions(options, 'edit');
+
+        if (!Array.isArray(data)) {
+            data = [data];
         }
 
-        return when.map(_data, function (item) {
+        return when.map(data, function (item) {
             // Accept an array of models as input
             if (item.toJSON) { item = item.toJSON(); }
+            if (!(_.isString(item.key) && item.key.length > 0)) {
+                return when.reject(new errors.ValidationError('Setting key cannot be empty.'));
+            }
+
+            item = self.filterData(item);
+
             return Settings.forge({ key: item.key }).fetch(options).then(function (setting) {
 
                 if (setting) {
                     return setting.save({value: item.value}, options);
                 }
 
-                return Settings.forge({ key: item.key, value: item.value }).save(null, options);
+                return when.reject(new errors.NotFoundError('Unable to find setting to update: ' + item.key));
 
             }, errors.logAndThrowError);
         });

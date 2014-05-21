@@ -2,6 +2,7 @@
 var crypto      = require('crypto'),
     express     = require('express'),
     hbs         = require('express-hbs'),
+    compress    = require('compression'),
     fs          = require('fs'),
     uuid        = require('node-uuid'),
     Polyglot    = require('node-polyglot'),
@@ -11,7 +12,7 @@ var crypto      = require('crypto'),
 
     api         = require('./api'),
     config      = require('./config'),
-    errors      = require('./errorHandling'),
+    errors      = require('./errors'),
     helpers     = require('./helpers'),
     mailer      = require('./mail'),
     middleware  = require('./middleware'),
@@ -46,26 +47,27 @@ function doFirstRun() {
 
     return api.notifications.add({
         type: 'info',
-        message: firstRunMessage.join(' '),
-        status: 'persistent',
-        id: 'ghost-first-run'
+        message: firstRunMessage.join(' ')
     });
 }
 
 function initDbHashAndFirstRun() {
-    return when(api.settings.read('dbHash')).then(function (hash) {
-        // we already ran this, chill
-        // Holds the dbhash (mainly used for cookie secret)
-        dbHash = hash.value;
+    return api.settings.read({key: 'dbHash', context: {internal: true}}).then(function (response) {
+        var hash = response.settings[0].value,
+            initHash;
+
+        dbHash = hash;
 
         if (dbHash === null) {
-            var initHash = uuid.v4();
-            return when(api.settings.edit.call({user: 1}, 'dbHash', initHash)).then(function (settings) {
-                dbHash = settings.dbHash;
-                return dbHash;
-            }).then(doFirstRun);
+            initHash = uuid.v4();
+            return api.settings.edit({settings: [{key: 'dbHash', value: initHash}]}, {context: {internal: true}})
+                .then(function (response) {
+                    dbHash = response.settings[0].value;
+                    return dbHash;
+                }).then(doFirstRun);
         }
-        return dbHash.value;
+
+        return dbHash;
     });
 }
 
@@ -193,6 +195,10 @@ function init(server) {
         // Initialize the settings cache
         return api.init();
     }).then(function () {
+        // Initialize the permissions actions and objects
+        // NOTE: Must be done before the config.theme.update and initDbHashAndFirstRun calls
+        return permissions.init();
+    }).then(function () {
         // We must pass the api.settings object
         // into this method due to circular dependencies.
         return config.theme.update(api.settings, config().url);
@@ -200,8 +206,6 @@ function init(server) {
         return when.join(
             // Check for or initialise a dbHash.
             initDbHashAndFirstRun(),
-            // Initialize the permissions actions and objects
-            permissions.init(),
             // Initialize mail
             mailer.init(),
             // Initialize apps
@@ -215,6 +219,11 @@ function init(server) {
 
         // return the correct mime type for woff filess
         express['static'].mime.define({'application/font-woff': ['woff']});
+
+        // enabled gzip compression by default
+        if (config().server.compress !== false) {
+            server.use(compress());
+        }
 
         // ## View engine
         // set the view engine

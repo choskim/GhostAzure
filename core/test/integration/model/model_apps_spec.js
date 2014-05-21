@@ -14,7 +14,7 @@ describe('App Model', function () {
     before(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     beforeEach(function (done) {
@@ -24,54 +24,54 @@ describe('App Model', function () {
             })
             .then(function () {
                 done();
-            }, done);
+            }).catch(done);
     });
 
     afterEach(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     after(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
-    it('can browse', function (done) {
-        AppModel.browse().then(function (results) {
+    it('can findAll', function (done) {
+        AppModel.findAll().then(function (results) {
 
             should.exist(results);
 
             results.length.should.be.above(0);
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
-    it('can read', function (done) {
-        AppModel.read({id: 1}).then(function (foundApp) {
+    it('can findOne', function (done) {
+        AppModel.findOne({id: 1}).then(function (foundApp) {
             should.exist(foundApp);
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
     it('can edit', function (done) {
-        AppModel.read({id: 1}).then(function (foundApp) {
+        AppModel.findOne({id: 1}).then(function (foundApp) {
             should.exist(foundApp);
 
             return foundApp.set({name: "New App"}).save();
         }).then(function () {
-            return AppModel.read({id: 1});
+            return AppModel.findOne({id: 1});
         }).then(function (updatedApp) {
             should.exist(updatedApp);
 
             updatedApp.get("name").should.equal("New App");
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
     it("can add", function (done) {
@@ -83,24 +83,25 @@ describe('App Model', function () {
             createdApp.attributes.name.should.equal(newApp.name);
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
-    it("can delete", function (done) {
-        AppModel.read({id: 1}).then(function (foundApp) {
+    it("can destroy", function (done) {
+        var firstApp = {id: 1};
+
+        AppModel.findOne(firstApp).then(function (foundApp) {
             should.exist(foundApp);
+            foundApp.attributes.id.should.equal(firstApp.id);
 
-            return AppModel['delete'](1);
-        }).then(function () {
-            return AppModel.browse();
-        }).then(function (foundApp) {
-            var hasRemovedId = foundApp.any(function (foundApp) {
-                return foundApp.id === 1;
-            });
+            return AppModel.destroy(firstApp);
+        }).then(function (response) {
+            response.toJSON().should.be.empty;
 
-            hasRemovedId.should.equal(false);
+            return AppModel.findOne(firstApp);
+        }).then(function (newResults) {
+            should.equal(newResults, null);
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 });

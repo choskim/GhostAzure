@@ -14,44 +14,44 @@ describe('Settings Model', function () {
     before(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     beforeEach(function (done) {
         testUtils.initData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     afterEach(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     after(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     describe('API', function () {
 
-        it('can browse', function (done) {
-            SettingsModel.browse().then(function (results) {
+        it('can findAll', function (done) {
+            SettingsModel.findAll().then(function (results) {
 
                 should.exist(results);
 
                 results.length.should.be.above(0);
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
-        it('can read', function (done) {
+        it('can findOne', function (done) {
             var firstSetting;
 
-            SettingsModel.browse().then(function (results) {
+            SettingsModel.findAll().then(function (results) {
 
                 should.exist(results);
 
@@ -59,7 +59,7 @@ describe('Settings Model', function () {
 
                 firstSetting = results.models[0];
 
-                return SettingsModel.read(firstSetting.attributes.key);
+                return SettingsModel.findOne(firstSetting.attributes.key);
 
             }).then(function (found) {
 
@@ -69,12 +69,12 @@ describe('Settings Model', function () {
 
                 done();
 
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('can edit single', function (done) {
 
-            SettingsModel.browse().then(function (results) {
+            SettingsModel.findAll().then(function (results) {
 
                 should.exist(results);
 
@@ -95,7 +95,7 @@ describe('Settings Model', function () {
 
                 done();
 
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('can edit multiple', function (done) {
@@ -103,7 +103,7 @@ describe('Settings Model', function () {
                 model2,
                 editedModel;
 
-            SettingsModel.browse().then(function (results) {
+            SettingsModel.findAll().then(function (results) {
 
                 should.exist(results);
 
@@ -132,7 +132,7 @@ describe('Settings Model', function () {
 
                 done();
 
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('can add', function (done) {
@@ -150,43 +150,27 @@ describe('Settings Model', function () {
                 createdSetting.attributes.type.should.equal("core");
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
-        it('can delete', function (done) {
-            var settingId;
+        it('can destroy', function (done) {
+            // dont't use id 1, since it will delete databaseversion
+            var settingToDestroy = {id: 2};
 
-            SettingsModel.browse().then(function (results) {
-
+            SettingsModel.findOne(settingToDestroy).then(function (results) {
                 should.exist(results);
+                results.attributes.id.should.equal(settingToDestroy.id);
 
-                results.length.should.be.above(0);
+                return SettingsModel.destroy(settingToDestroy);
+            }).then(function (response) {
+                response.toJSON().should.be.empty;
 
-                // dont't use results.models[0], since it will delete databaseversion
-                // which is used for testUtils.reset()
-                settingId = results.models[1].id;
-
-                return SettingsModel.destroy(settingId);
-
-            }).then(function () {
-
-                return SettingsModel.browse();
-
+                return SettingsModel.findOne(settingToDestroy);
             }).then(function (newResults) {
-
-                var ids, hasDeletedId;
-
-                ids = _.pluck(newResults.models, "id");
-
-                hasDeletedId = _.any(ids, function (id) {
-                    return id === settingId;
-                });
-
-                hasDeletedId.should.equal(false);
+                should.equal(newResults, null);
 
                 done();
-
-            }).then(null, done);
+            }).catch(done);
         });
     });
 
@@ -206,26 +190,25 @@ describe('Settings Model', function () {
                 return SettingsModel.findAll();
             }).then(function (allSettings) {
                 allSettings.length.should.be.above(0);
-                return SettingsModel.read('description').then(function (descriptionSetting) {
-                    return descriptionSetting;
-                });
+
+                return SettingsModel.findOne('description');
             }).then(function (descriptionSetting) {
                 // Testing against the actual value in default-settings.json feels icky,
                 // but it's easier to fix the test if that ever changes than to mock out that behaviour
                 descriptionSetting.get('value').should.equal('Just a blogging platform.');
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('doesn\'t overwrite any existing settings', function (done) {
-            SettingsModel.edit({key: 'description', value: 'Adam\'s Blog'}, {user: 1}).then(function () {
+            SettingsModel.add({key: 'description', value: 'Adam\'s Blog'}, {user: 1}).then(function () {
                 return SettingsModel.populateDefaults();
             }).then(function () {
-                return SettingsModel.read('description');
+                return SettingsModel.findOne('description');
             }).then(function (descriptionSetting) {
                 descriptionSetting.get('value').should.equal('Adam\'s Blog');
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
     });
 

@@ -1,138 +1,132 @@
-var when               = require('when'),
-    _                  = require('lodash'),
-    dataProvider       = require('../models'),
-    settings           = require('./settings'),
-    canThis            = require('../permissions').canThis,
-    ONE_DAY            = 86400000,
-    filteredAttributes = ['password', 'created_by', 'updated_by', 'last_login'],
+var when            = require('when'),
+    _               = require('lodash'),
+    dataProvider    = require('../models'),
+    settings        = require('./settings'),
+    canThis         = require('../permissions').canThis,
+    errors          = require('../errors'),
+    utils           = require('./utils'),
+
+    docName         = 'users',
+    ONE_DAY         = 86400000,
     users;
 
-// ## Users
 users = {
 
-    // #### Browse
-    // **takes:** options object
+    /**
+     * ## Browse
+     * Fetch all users
+     * @param {object} options (optional)
+     * @returns {Promise(Users)} Users Collection
+     */
     browse: function browse(options) {
-        // **returns:** a promise for a collection of users in a json object
-        return canThis(this.user).browse.user().then(function () {
-            return dataProvider.User.browse(options).then(function (result) {
-                var i = 0,
-                    omitted = {};
-
-                if (result) {
-                    omitted = result.toJSON();
-                }
-
-                for (i = 0; i < omitted.length; i = i + 1) {
-                    omitted[i] = _.omit(omitted[i], filteredAttributes);
-                }
-
-                return omitted;
+        options = options || {};
+        return canThis(options.context).browse.user().then(function () {
+            return dataProvider.User.findAll(options).then(function (result) {
+                return { users: result.toJSON() };
             });
         }, function () {
-            return when.reject({code: 403, message: 'You do not have permission to browse users.'});
+            return when.reject(new errors.NoPermissionError('You do not have permission to browse users.'));
         });
     },
 
-    // #### Read
-    // **takes:** an identifier (id or slug?)
-    read: function read(args) {
-        // **returns:** a promise for a single user in a json object
-        if (args.id === 'me') {
-            args = {id: this.user};
+    read: function read(options) {
+        var attrs = ['id'],
+            data = _.pick(options, attrs);
+
+        options = _.omit(options, attrs);
+
+        if (data.id === 'me' && options.context && options.context.user) {
+            data.id = options.context.user;
         }
 
-        return dataProvider.User.read(args).then(function (result) {
+        return dataProvider.User.findOne(data, options).then(function (result) {
             if (result) {
-                var omitted = _.omit(result.toJSON(), filteredAttributes);
-                return omitted;
+                return { users: [result.toJSON()] };
             }
 
-            return when.reject({code: 404, message: 'User not found'});
+            return when.reject(new errors.NotFoundError('User not found.'));
         });
     },
 
-    // #### Edit
-    // **takes:** a json object representing a user
-    edit: function edit(userData) {
-        // **returns:** a promise for the resulting user in a json object
-        var self = this;
-        userData.id = this.user;
-        return canThis(this.user).edit.user(userData.id).then(function () {
-            return dataProvider.User.edit(userData, {user: self.user}).then(function (result) {
+    edit: function edit(object, options) {
+        if (options.id === 'me' && options.context && options.context.user) {
+            options.id = options.context.user;
+        }
+
+        return canThis(options.context).edit.user(options.id).then(function () {
+            return utils.checkObject(object, docName).then(function (checkedUserData) {
+
+                return dataProvider.User.edit(checkedUserData.users[0], options);
+            }).then(function (result) {
                 if (result) {
-                    var omitted = _.omit(result.toJSON(), filteredAttributes);
-                    return omitted;
+                    return { users: [result.toJSON()]};
                 }
-                return when.reject({code: 404, message: 'User not found'});
+                return when.reject(new errors.NotFoundError('User not found.'));
             });
         }, function () {
-            return when.reject({code: 403, message: 'You do not have permission to edit this users.'});
+            return when.reject(new errors.NoPermissionError('You do not have permission to edit this users.'));
         });
     },
 
-    // #### Add
-    // **takes:** a json object representing a user
-    add: function add(userData) {
-        // **returns:** a promise for the resulting user in a json object
-        var self = this;
-        return canThis(this.user).add.user().then(function () {
-            // if the user is created by users.register(), use id: 1
-            // as the creator for now
-            if (self.user === 'internal') {
-                self.user = 1;
-            }
-            return dataProvider.User.add(userData, {user: self.user});
+    add: function add(object, options) {
+        options = options || {};
+
+        return canThis(options.context).add.user().then(function () {
+            return utils.checkObject(object, docName).then(function (checkedUserData) {
+                // if the user is created by users.register(), use id: 1 as the creator for now
+                if (options.context.internal) {
+                    options.context.user = 1;
+                }
+
+                return dataProvider.User.add(checkedUserData.users[0], options);
+            }).then(function (result) {
+                if (result) {
+                    return { users: [result.toJSON()]};
+                }
+            });
         }, function () {
-            return when.reject({code: 403, message: 'You do not have permission to add a users.'});
+            return when.reject(new errors.NoPermissionError('You do not have permission to add a users.'));
         });
     },
 
-    // #### Register
-    // **takes:** a json object representing a user
-    register: function register(userData) {
-        // TODO: if we want to prevent users from being created with the signup form
-        // this is the right place to do it
-        return users.add.call({user: 'internal'}, userData);
+    register: function register(object) {
+        // TODO: if we want to prevent users from being created with the signup form this is the right place to do it
+        return users.add(object, {context: {internal: true}});
     },
 
-    // #### Check
-    // Checks a password matches the given email address
 
-    // **takes:** a json object representing a user
-    check: function check(userData) {
-        // **returns:** on success, returns a promise for the resulting user in a json object
-        return dataProvider.User.check(userData);
+    check: function check(object) {
+        return dataProvider.User.check(object);
     },
 
-    // #### Change Password
-    // **takes:** a json object representing a user
-    changePassword: function changePassword(userData) {
-        // **returns:** on success, returns a promise for the resulting user in a json object
-        return dataProvider.User.changePassword(userData);
+    changePassword: function changePassword(object) {
+        return dataProvider.User.changePassword(object);
     },
 
     generateResetToken: function generateResetToken(email) {
         var expires = Date.now() + ONE_DAY;
-        return settings.read('dbHash').then(function (dbHash) {
+        return settings.read({context: {internal: true}, key: 'dbHash'}).then(function (response) {
+            var dbHash = response.settings[0].value;
             return dataProvider.User.generateResetToken(email, expires, dbHash);
         });
     },
 
     validateToken: function validateToken(token) {
-        return settings.read('dbHash').then(function (dbHash) {
+        return settings.read({context: {internal: true}, key: 'dbHash'}).then(function (response) {
+            var dbHash = response.settings[0].value;
             return dataProvider.User.validateToken(token, dbHash);
         });
     },
 
     resetPassword: function resetPassword(token, newPassword, ne2Password) {
-        return settings.read('dbHash').then(function (dbHash) {
+        return settings.read({context: {internal: true}, key: 'dbHash'}).then(function (response) {
+            var dbHash = response.settings[0].value;
             return dataProvider.User.resetPassword(token, newPassword, ne2Password, dbHash);
         });
     },
 
     doesUserExist: function doesUserExist() {
-        return dataProvider.User.browse().then(function (users) {
+        return dataProvider.User.findAll().then(function (users) {
             if (users.length === 0) {
                 return false;
             }
@@ -142,4 +136,3 @@ users = {
 };
 
 module.exports = users;
-module.exports.filteredAttributes = filteredAttributes;

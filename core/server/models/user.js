@@ -1,6 +1,6 @@
 var _              = require('lodash'),
     when           = require('when'),
-    errors         = require('../errorHandling'),
+    errors         = require('../errors'),
     nodefn         = require('when/node/function'),
     bcrypt         = require('bcryptjs'),
     Posts          = require('./post').Posts,
@@ -61,6 +61,14 @@ User = ghostBookshelf.Model.extend({
         }
     },
 
+    toJSON: function (options) {
+        var attrs = ghostBookshelf.Model.prototype.toJSON.call(this, options);
+        // remove password hash for security reasons
+        delete attrs.password;
+
+        return attrs;
+    },
+
     posts: function () {
         return this.hasMany(Posts, 'created_by');
     },
@@ -74,21 +82,50 @@ User = ghostBookshelf.Model.extend({
     }
 
 }, {
+    /**
+    * Returns an array of keys permitted in a method's `options` hash, depending on the current method.
+    * @param {String} methodName The name of the method to check valid options for.
+    * @return {Array} Keys allowed in the `options` hash of the model's method.
+    */
+    permittedOptions: function (methodName) {
+        var options = ghostBookshelf.Model.permittedOptions(),
+
+            // whitelists for the `options` hash argument on methods, by method name.
+            // these are the only options that can be passed to Bookshelf / Knex.
+            validOptions = {
+                findOne: ['withRelated'],
+                add: ['user'],
+                edit: ['user']
+            };
+
+        if (validOptions[methodName]) {
+            options = options.concat(validOptions[methodName]);
+        }
+
+        return options;
+    },
 
     /**
+     * ## Add
      * Naive user add
-     * @param  _user
-     *
      * Hashes the password provided before saving to the database.
+     *
+     * @param {object} data
+     * @param {object} options
+     * @extends ghostBookshelf.Model.add to manage all aspects of user signup
+     * **See:** [ghostBookshelf.Model.add](base.js.html#Add)
      */
-    add: function (_user, options) {
+    add: function (data, options) {
 
         var self = this,
             // Clone the _user so we don't expose the hashed password unnecessarily
-            userData = _.extend({}, _user);
+            userData = this.filterData(data);
+
+        options = this.filterOptions(options, 'add');
+
         /**
          * This only allows one user to be added to the database, otherwise fails.
-         * @param  {object} user
+         * @param {object} user
          * @author javorszky
          */
         return validatePasswordLength(userData.password).then(function () {
@@ -100,7 +137,7 @@ User = ghostBookshelf.Model.extend({
             }
         }).then(function () {
             // Generate a new password hash
-            return generatePasswordHash(_user.password);
+            return generatePasswordHash(data.password);
         }).then(function (hash) {
             // Assign the hashed password
             userData.password = hash;
@@ -110,15 +147,15 @@ User = ghostBookshelf.Model.extend({
             // Save the user with the hashed password
             return ghostBookshelf.Model.add.call(self, userData, options);
         }).then(function (addedUser) {
+
             // Assign the userData to our created user so we can pass it back
             userData = addedUser;
             // Add this user to the admin role (assumes admin = role_id: 1)
             return userData.roles().attach(1);
         }).then(function (addedUserRole) {
             /*jshint unused:false*/
-            // Return the added user as expected
-
-            return when.resolve(userData);
+            // find and return the added user
+            return self.findOne({id: userData.id}, options);
         });
 
         /**
@@ -140,23 +177,34 @@ User = ghostBookshelf.Model.extend({
 
     },
 
-    permissable: function (userModelOrId, context) {
+    permissable: function (userModelOrId, context, loadedPermissions, hasUserPermission, hasAppPermission) {
         var self = this,
-            userId = context.user,
-            userModel = userModelOrId;
+            userModel = userModelOrId,
+            origArgs;
 
         // If we passed in an id instead of a model, get the model
         // then check the permissions
         if (_.isNumber(userModelOrId) || _.isString(userModelOrId)) {
-            return this.read({id: userModelOrId, status: 'all'}).then(function (foundUserModel) {
-                return self.permissable(foundUserModel, context);
+            // Grab the original args without the first one
+            origArgs = _.toArray(arguments).slice(1);
+            // Get the actual post model
+            return this.findOne({id: userModelOrId}).then(function (foundUserModel) {
+                // Build up the original args but substitute with actual model
+                var newArgs = [foundUserModel].concat(origArgs);
+
+                return self.permissable.apply(self, newArgs);
             }, errors.logAndThrowError);
         }
 
-        // If this is the same user that requests the operation allow it.
-        if (userModel && userId === userModel.get('id')) {
+        if (userModel) {
+            // If this is the same user that requests the operation allow it.
+            hasUserPermission = hasUserPermission || context.user === userModel.get('id');
+        }
+
+        if (hasUserPermission && hasAppPermission) {
             return when.resolve();
         }
+
         return when.reject();
     },
 
@@ -217,8 +265,7 @@ User = ghostBookshelf.Model.extend({
 
     /**
      * Naive change password method
-     * @param  {object} _userdata email, old pw, new pw, new pw2
-     *
+     * @param {object} _userdata email, old pw, new pw, new pw2
      */
     changePassword: function (_userdata) {
         var self = this,
@@ -308,7 +355,7 @@ User = ghostBookshelf.Model.extend({
             var diff = 0,
                 i;
 
-            // check if the token lenght is correct
+            // check if the token length is correct
             if (token.length !== generatedToken.length) {
                 diff = 1;
             }

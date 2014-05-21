@@ -2,9 +2,9 @@
 var testUtils = require('../../utils'),
     should    = require('should'),
 
-    // Stuff we are testing
     permissions   = require('../../../server/permissions'),
-    DataGenerator = require('../../utils/fixtures/data-generator'),
+
+    // Stuff we are testing
     UsersAPI      = require('../../../server/api/users');
 
 describe('Users API', function () {
@@ -12,98 +12,185 @@ describe('Users API', function () {
     before(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
-    });
-
-    beforeEach(function (done) {
-        testUtils.initData().then(function () {
-            return testUtils.insertDefaultFixtures();
-        }).then(function () {
-            return testUtils.insertEditorUser();
-        }).then(function () {
-            return testUtils.insertAuthorUser();
-        }).then(function () {
-            done();
-        }, done);
+        }).catch(done);
     });
 
     afterEach(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
-    it('browse', function (done) {
-        permissions.init().then(function () {
-            return UsersAPI.browse.call({user: 1});
-        }).then(function (results) {
-            should.exist(results);
-            results.length.should.be.above(0);
-            testUtils.API.checkResponse(results[0], 'user');
-        }, function (error) {
-            done(new Error(JSON.stringify(error)));
-        }).then(function () {
-            return UsersAPI.browse.call({user: 2});
-        }).then(function (results) {
-            should.exist(results);
-            results.length.should.be.above(0);
-            testUtils.API.checkResponse(results[0], 'user');
-        }, function (error) {
-            done(new Error(JSON.stringify(error)));
-        }).then(function () {
-            return UsersAPI.browse.call({user: 3});
-        }).then(function (results) {
-            should.exist(results);
-            results.length.should.be.above(0);
-            testUtils.API.checkResponse(results[0], 'user');
-            done();
-        }, function (error) {
-            done(new Error(JSON.stringify(error)));
-        })
-    });
-    it('browse denied', function (done) {
-        permissions.init().then(function () {
-            return UsersAPI.browse();
-        }).then(function (results) {
-            done(new Error("Browse user is not denied without authentication."));
-        }, function () {
-            done();
+    describe('No User', function () {
+        beforeEach(function (done) {
+            testUtils.initData().then(function () {
+                return permissions.init();
+            }).then(function () {
+                done();
+            }).catch(done);
+        });
+
+        it('can add with internal user', function (done) {
+            UsersAPI.register({ users: [{
+                'name': 'Hello World',
+                'email': 'hello@world.com',
+                'password': 'password'
+            }]}).then(function (results) {
+                should.exist(results);
+                testUtils.API.checkResponse(results, 'users');
+                should.exist(results.users);
+                results.users.should.have.length(1);
+                testUtils.API.checkResponse(results.users[0], 'user');
+                results.users[0].name.should.equal('Hello World');
+                done();
+            }).catch(done);
         });
     });
-    it('read', function (done) {
-        permissions.init().then(function () {
-            return UsersAPI.read.call({user: 1}, {id: 1});
-        }).then(function (result) {
-            should.exist(result);
-            result.id.should.eql(1);
-            testUtils.API.checkResponse(result, 'user');
-        }, function (error) {
-            done(new Error(JSON.stringify(error)));
-        }).then(function () {
-            return UsersAPI.read.call({user: 2}, {id: 1});
-        }).then(function (result) {
-            should.exist(result);
-            result.id.should.eql(1);
-            testUtils.API.checkResponse(result, 'user');
-        }, function (error) {
-            done(new Error(JSON.stringify(error)));
-        }).then(function () {
-            return UsersAPI.read.call({user: 3}, {id: 1});
-        }).then(function (result) {
-            should.exist(result);
-            result.id.should.eql(1);
-            testUtils.API.checkResponse(result, 'user');
-        }, function (error) {
-            done(new Error(JSON.stringify(error)));
-        }).then(function () {
-            return UsersAPI.read({id: 1});
-        }).then(function (result) {
-            should.exist(result);
-            result.id.should.eql(1);
-            testUtils.API.checkResponse(result, 'user');
-            done();
-        }, function (error) {
-            done(new Error(JSON.stringify(error)));
+
+    describe('With Users', function () {
+        beforeEach(function (done) {
+            testUtils.initData().then(function () {
+                return testUtils.insertDefaultFixtures();
+            }).then(function () {
+                return testUtils.insertEditorUser();
+            }).then(function () {
+                return testUtils.insertAuthorUser();
+            }).then(function () {
+                return permissions.init();
+            }).then(function () {
+                done();
+            }).catch(done);
+        });
+
+        it('admin can browse', function (done) {
+            UsersAPI.browse({context: {user: 1}}).then(function (results) {
+                should.exist(results);
+                testUtils.API.checkResponse(results, 'users');
+                should.exist(results.users);
+                results.users.should.have.length(3);
+                testUtils.API.checkResponse(results.users[0], 'user');
+                testUtils.API.checkResponse(results.users[1], 'user');
+                testUtils.API.checkResponse(results.users[2], 'user');
+                done();
+            }).catch(done);
+        });
+
+        it('editor can browse', function (done) {
+            UsersAPI.browse({context: {user: 2}}).then(function (results) {
+                should.exist(results);
+                testUtils.API.checkResponse(results, 'users');
+                should.exist(results.users);
+                results.users.should.have.length(3);
+                testUtils.API.checkResponse(results.users[0], 'user');
+                testUtils.API.checkResponse(results.users[1], 'user');
+                testUtils.API.checkResponse(results.users[2], 'user');
+                done();
+            }).catch(done);
+        });
+
+        it('author can browse', function (done) {
+            UsersAPI.browse({context: {user: 3}}).then(function (results) {
+                should.exist(results);
+                testUtils.API.checkResponse(results, 'users');
+                should.exist(results.users);
+                results.users.should.have.length(3);
+                testUtils.API.checkResponse(results.users[0], 'user');
+                testUtils.API.checkResponse(results.users[1], 'user');
+                testUtils.API.checkResponse(results.users[2], 'user');
+                done();
+            }).catch(done);
+        });
+
+        it('no-auth user cannot browse', function (done) {
+            UsersAPI.browse().then(function () {
+                done(new Error('Browse user is not denied without authentication.'));
+            }, function () {
+                done();
+            }).catch(done);
+        });
+
+        it('admin can read', function (done) {
+            UsersAPI.read({id: 1, context: {user: 1}}).then(function (results) {
+                should.exist(results);
+                testUtils.API.checkResponse(results, 'users');
+                results.users[0].id.should.eql(1);
+                testUtils.API.checkResponse(results.users[0], 'user');
+                done();
+            }).catch(done);
+        });
+
+        it('editor can read', function (done) {
+            UsersAPI.read({id: 1, context: {user: 2}}).then(function (results) {
+                should.exist(results);
+                testUtils.API.checkResponse(results, 'users');
+                results.users[0].id.should.eql(1);
+                testUtils.API.checkResponse(results.users[0], 'user');
+                done();
+            }).catch(done);
+        });
+
+        it('author can read', function (done) {
+            UsersAPI.read({id: 1, context: {user: 3}}).then(function (results) {
+                should.exist(results);
+                testUtils.API.checkResponse(results, 'users');
+                results.users[0].id.should.eql(1);
+                testUtils.API.checkResponse(results.users[0], 'user');
+                done();
+            }).catch(done);
+        });
+
+        it('no-auth can read', function (done) {
+            UsersAPI.read({id: 1}).then(function (results) {
+                should.exist(results);
+                testUtils.API.checkResponse(results, 'users');
+                results.users[0].id.should.eql(1);
+                testUtils.API.checkResponse(results.users[0], 'user');
+                done();
+            }).catch(done);
+        });
+
+        it('admin can edit', function (done) {
+            UsersAPI.edit({users: [{name: 'Joe Blogger'}]}, {id: 1, context: {user: 1}}).then(function (response) {
+                should.exist(response);
+                testUtils.API.checkResponse(response, 'users');
+                response.users.should.have.length(1);
+                testUtils.API.checkResponse(response.users[0], 'user');
+                response.users[0].name.should.equal('Joe Blogger');
+
+                done();
+            }).catch(done);
+        });
+
+        it('editor can edit', function (done) {
+            UsersAPI.edit({users: [{name: 'Joe Blogger'}]}, {id: 1, context: {user: 2}}).then(function (response) {
+                should.exist(response);
+                testUtils.API.checkResponse(response, 'users');
+                response.users.should.have.length(1);
+                testUtils.API.checkResponse(response.users[0], 'user');
+                response.users[0].name.should.eql('Joe Blogger');
+
+                done();
+            }).catch(done);
+        });
+
+        it('author can edit only self', function (done) {
+            // Test author cannot edit admin user
+            UsersAPI.edit({users: [{name: 'Joe Blogger'}]}, {id: 1, context: {user: 3}}).then(function () {
+                done(new Error('Author should not be able to edit account which is not their own'));
+            }).catch(function (error) {
+                error.type.should.eql('NoPermissionError');
+            }).finally(function () {
+                // Next test that author CAN edit self
+                return UsersAPI.edit({users: [{name: 'Timothy Bogendath'}]}, {id: 3, context: {user: 3}})
+                    .then(function (response) {
+                        should.exist(response);
+                        testUtils.API.checkResponse(response, 'users');
+                        response.users.should.have.length(1);
+                        testUtils.API.checkResponse(response.users[0], 'user');
+                        response.users[0].name.should.eql('Timothy Bogendath');
+                        done();
+                    }).catch(done);
+            });
         });
     });
 });

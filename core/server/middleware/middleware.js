@@ -31,7 +31,7 @@ var middleware = {
     authenticate: function (req, res, next) {
         var noAuthNeeded = [
                 '/ghost/signin/', '/ghost/signout/', '/ghost/signup/',
-                '/ghost/forgotten/', '/ghost/reset/'
+                '/ghost/forgotten/', '/ghost/reset/', '/ghost/ember/'
             ],
             subPath;
 
@@ -70,8 +70,7 @@ var middleware = {
                     msg = {
                         type: 'error',
                         message: 'Please Sign In',
-                        status: 'passive',
-                        id: 'failedauth'
+                        status: 'passive'
                     };
                     // let's only add the notification once
                     if (!_.contains(_.pluck(notifications, 'id'), 'failedauth')) {
@@ -99,7 +98,7 @@ var middleware = {
     // Check if we're logged in, and if so, redirect people back to dashboard
     // Login and signup forms in particular
     redirectToDashboard: function (req, res, next) {
-        if (req.session.user) {
+        if (req.session && req.session.user) {
             return res.redirect(config().paths.subdir + '/ghost/');
         }
 
@@ -110,10 +109,11 @@ var middleware = {
     // That being ghost.notifications, and let's remove the passives from there
     // plus the local messages, as they have already been added at this point
     // otherwise they'd appear one too many times
+    // ToDo: Remove once ember handles passive notifications.
     cleanNotifications: function (req, res, next) {
         /*jslint unparam:true*/
         api.notifications.browse().then(function (notifications) {
-            _.each(notifications, function (notification) {
+            _.each(notifications.notifications, function (notification) {
                 if (notification.status === 'passive') {
                     api.notifications.destroy(notification);
                 }
@@ -170,7 +170,8 @@ var middleware = {
 
     // to allow unit testing
     forwardToExpressStatic: function (req, res, next) {
-        api.settings.read('activeTheme').then(function (activeTheme) {
+        api.settings.read({context: {internal: true}, key: 'activeTheme'}).then(function (response) {
+            var activeTheme = response.settings[0];
             // For some reason send divides the max age number by 1000
             express['static'](path.join(config().paths.themePath, activeTheme.value), {maxAge: ONE_HOUR_MS})(req, res, next);
         });

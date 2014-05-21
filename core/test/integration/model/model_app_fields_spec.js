@@ -14,7 +14,7 @@ describe('App Fields Model', function () {
     before(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     beforeEach(function (done) {
@@ -24,53 +24,53 @@ describe('App Fields Model', function () {
             })
             .then(function () {
                 done();
-            }, done);
+            }).catch(done);
     });
 
     afterEach(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     after(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
-    it('can browse', function (done) {
-        AppFieldsModel.browse().then(function (results) {
+    it('can findAll', function (done) {
+        AppFieldsModel.findAll().then(function (results) {
 
             should.exist(results);
 
             results.length.should.be.above(0);
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
-    it('can read', function (done) {
-        AppFieldsModel.read({id: 1}).then(function (foundAppField) {
+    it('can findOne', function (done) {
+        AppFieldsModel.findOne({id: 1}).then(function (foundAppField) {
             should.exist(foundAppField);
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
     it('can edit', function (done) {
-        AppFieldsModel.read({id: 1}).then(function (foundAppField) {
+        AppFieldsModel.findOne({id: 1}).then(function (foundAppField) {
             should.exist(foundAppField);
 
             return foundAppField.set({value: "350"}).save();
         }).then(function () {
-            return AppFieldsModel.read({id: 1});
+            return AppFieldsModel.findOne({id: 1});
         }).then(function (updatedAppField) {
             should.exist(updatedAppField);
 
             updatedAppField.get("value").should.equal("350");
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 });

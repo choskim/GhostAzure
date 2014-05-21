@@ -2,14 +2,12 @@
 var supertest     = require('supertest'),
     express       = require('express'),
     should        = require('should'),
-    _             = require('lodash'),
     testUtils     = require('../../../utils'),
 
     ghost         = require('../../../../../core'),
 
     httpServer,
-    request,
-    agent;
+    request;
 
 
 describe('User API', function () {
@@ -44,7 +42,7 @@ describe('User API', function () {
                             pattern_meta.should.exist;
                             csrfToken = res.text.match(pattern_meta)[1];
 
-                            setTimeout(function () {
+                            process.nextTick(function () {
                                 request.post('/ghost/signin/')
                                     .set('X-CSRF-Token', csrfToken)
                                     .send({email: user.email, password: user.password})
@@ -61,17 +59,16 @@ describe('User API', function () {
                                                 if (err) {
                                                     return done(err);
                                                 }
-                                                // console.log('/ghost/', err, res);
                                                 csrfToken = res.text.match(pattern_meta)[1];
                                                 done();
                                             });
                                     });
 
-                            }, 2000);
+                            });
 
                         });
-                }, done);
-        }).otherwise(function (e) {
+                }).catch(done);
+        }).catch(function (e) {
             console.log('Ghost Error: ', e);
             console.log(e.stack);
         });
@@ -92,9 +89,11 @@ describe('User API', function () {
                 should.not.exist(res.headers['x-cache-invalidate']);
                 res.should.be.json;
                 var jsonResponse = res.body;
-                jsonResponse[0].should.exist;
+                jsonResponse.users.should.exist;
+                testUtils.API.checkResponse(jsonResponse, 'users');
 
-                testUtils.API.checkResponse(jsonResponse[0], 'user');
+                jsonResponse.users.should.have.length(1);
+                testUtils.API.checkResponse(jsonResponse.users[0], 'user');
                 done();
             });
     });
@@ -110,9 +109,11 @@ describe('User API', function () {
                 should.not.exist(res.headers['x-cache-invalidate']);
                 res.should.be.json;
                 var jsonResponse = res.body;
-                jsonResponse.should.exist;
+                jsonResponse.users.should.exist;
+                testUtils.API.checkResponse(jsonResponse, 'users');
 
-                testUtils.API.checkResponse(jsonResponse, 'user');
+                jsonResponse.users.should.have.length(1);
+                testUtils.API.checkResponse(jsonResponse.users[0], 'user');
                 done();
             });
     });
@@ -129,8 +130,8 @@ describe('User API', function () {
                 res.should.be.json;
                 var jsonResponse = res.body;
                 jsonResponse.should.exist;
-
-                testUtils.API.checkResponseValue(jsonResponse, ['error']);
+                jsonResponse.errors.should.exist;
+                testUtils.API.checkResponseValue(jsonResponse.errors[0], ['message', 'type']);
                 done();
             });
     });
@@ -143,13 +144,16 @@ describe('User API', function () {
                 }
 
                 var jsonResponse = res.body,
-                    changedValue = 'joe-bloggs.ghost.org';
-                jsonResponse.should.exist;
-                jsonResponse.website = changedValue;
+                    changedValue = 'joe-bloggs.ghost.org',
+                    dataToSend;
+                jsonResponse.users[0].should.exist;
+                testUtils.API.checkResponse(jsonResponse.users[0], 'user');
+
+                dataToSend = { users: [{website: changedValue}]};
 
                 request.put(testUtils.API.getApiQuery('users/me/'))
                     .set('X-CSRF-Token', csrfToken)
-                    .send(jsonResponse)
+                    .send(dataToSend)
                     .expect(200)
                     .end(function (err, res) {
                         if (err) {
@@ -159,10 +163,10 @@ describe('User API', function () {
                         var putBody = res.body;
                         res.headers['x-cache-invalidate'].should.eql('/*');
                         res.should.be.json;
-                        putBody.should.exist;
-                        putBody.website.should.eql(changedValue);
-
-                        testUtils.API.checkResponse(putBody, 'user');
+                        putBody.users[0].should.exist;
+                        putBody.users[0].website.should.eql(changedValue);
+                        putBody.users[0].email.should.eql(jsonResponse.users[0].email);
+                        testUtils.API.checkResponse(putBody.users[0], 'user');
                         done();
                     });
             });
@@ -177,8 +181,8 @@ describe('User API', function () {
 
                 var jsonResponse = res.body,
                     changedValue = 'joe-bloggs.ghost.org';
-                jsonResponse.should.exist;
-                jsonResponse.website = changedValue;
+                jsonResponse.users[0].should.exist;
+                jsonResponse.users[0].website = changedValue;
 
                 request.put(testUtils.API.getApiQuery('users/me/'))
                     .set('X-CSRF-Token', 'invalid-token')
@@ -194,6 +198,4 @@ describe('User API', function () {
 
             });
     });
-
-
 });

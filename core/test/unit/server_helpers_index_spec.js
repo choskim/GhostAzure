@@ -32,7 +32,9 @@ describe('Core Helpers', function () {
         helpers = rewire('../../server/helpers');
         sandbox = sinon.sandbox.create();
         apiStub = sandbox.stub(api.settings, 'read', function (arg) {
-            return when({value: 'casper'});
+            return when({
+                settings: [{value: 'casper'}]
+            });
         });
 
         config = helpers.__get__('config');
@@ -290,7 +292,7 @@ describe('Core Helpers', function () {
                 rendered.string.should.equal('home-template');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('can render class string for context', function (done) {
@@ -316,7 +318,7 @@ describe('Core Helpers', function () {
                 rendered[4].string.should.equal('archive-template tag-template tag-foo');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('can render class for static page', function (done) {
@@ -330,7 +332,7 @@ describe('Core Helpers', function () {
                 rendered.string.should.equal('home-template page');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('can render class for static page with custom template', function (done) {
@@ -346,7 +348,7 @@ describe('Core Helpers', function () {
                 rendered.string.should.equal('post-template page page-template-about');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
     });
 
@@ -360,7 +362,7 @@ describe('Core Helpers', function () {
                 should.exist(rendered);
                 rendered.string.should.equal('post');
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('can render featured class', function (done) {
@@ -371,7 +373,7 @@ describe('Core Helpers', function () {
                 rendered.string.should.equal('post featured');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('can render page class', function (done) {
@@ -382,7 +384,7 @@ describe('Core Helpers', function () {
                 rendered.string.should.equal('post page');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
     });
 
@@ -407,7 +409,7 @@ describe('Core Helpers', function () {
                     '<link rel="canonical" href="http://testurl.com/" />');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('returns meta tag string even if version is invalid', function (done) {
@@ -419,7 +421,7 @@ describe('Core Helpers', function () {
                     '<link rel="canonical" href="http://testurl.com/" />');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('returns correct rss url with subdirectory', function (done) {
@@ -431,7 +433,7 @@ describe('Core Helpers', function () {
                     '<link rel="canonical" href="http://testurl.com/blog/" />');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('returns canonical URL', function (done) {
@@ -443,7 +445,7 @@ describe('Core Helpers', function () {
                     '<link rel="canonical" href="http://testurl.com/about/" />');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
     });
 
@@ -460,7 +462,7 @@ describe('Core Helpers', function () {
                 rendered.string.should.match(/<script src=".*\/public\/jquery.js\?v=abc"><\/script>/);
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('outputs correct jquery for production mode', function (done) {
@@ -472,7 +474,7 @@ describe('Core Helpers', function () {
                 rendered.string.should.match(/<script src=".*\/public\/jquery.min.js\?v=abc"><\/script>/);
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
     });
 
@@ -682,7 +684,7 @@ describe('Core Helpers', function () {
         });
 
         it('can render single page with no pagination necessary', function () {
-            var rendered = helpers.pagination.call({pagination: {page: 1, prev: undefined, next: undefined, limit: 15, total: 8, pages: 1}});
+            var rendered = helpers.pagination.call({pagination: {page: 1, prev: null, next: null, limit: 15, total: 8, pages: 1}});
             should.exist(rendered);
             // strip out carriage returns and compare.
             rendered.string.should.match(paginationRegex);
@@ -693,7 +695,7 @@ describe('Core Helpers', function () {
         });
 
         it('can render first page of many with older posts link', function () {
-            var rendered = helpers.pagination.call({pagination: {page: 1, prev: undefined, next: 2, limit: 15, total: 8, pages: 3}});
+            var rendered = helpers.pagination.call({pagination: {page: 1, prev: null, next: 2, limit: 15, total: 8, pages: 3}});
             should.exist(rendered);
 
             rendered.string.should.match(paginationRegex);
@@ -715,7 +717,7 @@ describe('Core Helpers', function () {
         });
 
         it('can render last page of many with newer posts link', function () {
-            var rendered = helpers.pagination.call({pagination: {page: 3, prev: 2, next: undefined, limit: 15, total: 8, pages: 3}});
+            var rendered = helpers.pagination.call({pagination: {page: 3, prev: 2, next: null, limit: 15, total: 8, pages: 3}});
             should.exist(rendered);
 
             rendered.string.should.match(paginationRegex);
@@ -733,7 +735,7 @@ describe('Core Helpers', function () {
                 };
             };
 
-            runErrorTest({pagination: {page: 3, prev: true, next: undefined, limit: 15, total: 8, pages: 3}})
+            runErrorTest({pagination: {page: 3, prev: true, next: null, limit: 15, total: 8, pages: 3}})
                 .should.throwError('Invalid value, Next/Prev must be a number');
             runErrorTest({pagination: {page: 3, prev: 2, next: true, limit: 15, total: 8, pages: 3}})
                 .should.throwError('Invalid value, Next/Prev must be a number');
@@ -747,13 +749,13 @@ describe('Core Helpers', function () {
             runErrorTest({pagination: {page: 3, limit: 15, total: 8}})
                 .should.throwError('All values must be defined for page, pages, limit and total');
 
-            runErrorTest({pagination: {page: null, limit: 15, total: 8, pages: 3}})
+            runErrorTest({pagination: {page: null, prev: null, next: null, limit: 15, total: 8, pages: 3}})
                 .should.throwError('Invalid value, check page, pages, limit and total are numbers');
-            runErrorTest({pagination: {page: 1, limit: null, total: 8, pages: 3}})
+            runErrorTest({pagination: {page: 1, prev: null, next: null, limit: null, total: 8, pages: 3}})
                 .should.throwError('Invalid value, check page, pages, limit and total are numbers');
-            runErrorTest({pagination: {page: 1, limit: 15, total: null, pages: 3}})
+            runErrorTest({pagination: {page: 1, prev: null, next: null, limit: 15, total: null, pages: 3}})
                 .should.throwError('Invalid value, check page, pages, limit and total are numbers');
-            runErrorTest({pagination: {page: 1, limit: 15, total: 8, pages: null}})
+            runErrorTest({pagination: {page: 1, prev: null, next: null, limit: 15, total: 8, pages: null}})
                 .should.throwError('Invalid value, check page, pages, limit and total are numbers');
         });
     });
@@ -870,7 +872,7 @@ describe('Core Helpers', function () {
                 rendered.string.should.equal('Ghost');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('can return title of a post', function (done) {
@@ -880,7 +882,7 @@ describe('Core Helpers', function () {
                 rendered.string.should.equal('Post Title');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('can return tag name', function (done) {
@@ -890,7 +892,7 @@ describe('Core Helpers', function () {
                 rendered.string.should.equal('foo - Ghost');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
     });
 
@@ -906,7 +908,7 @@ describe('Core Helpers', function () {
                 rendered.string.should.equal('Just a blogging platform.');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('can return empty description on post', function (done) {
@@ -916,7 +918,7 @@ describe('Core Helpers', function () {
                 rendered.string.should.equal('');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
     });
@@ -1186,7 +1188,9 @@ describe('Core Helpers', function () {
             apiStub = sandbox.stub(api.settings, 'read', function () {
                 var futureversion = packageInfo.version.split('.');
                 futureversion[futureversion.length - 1] = parseInt(futureversion[futureversion.length - 1], 10) + 1;
-                return when({value: futureversion.join('.')});
+                return when({
+                    settings: [{value: futureversion.join('.')}]
+                });
             });
 
             helpers.update_notification.call({currentUser: {name: 'bob'}}).then(function (rendered) {
@@ -1202,20 +1206,20 @@ describe('Core Helpers', function () {
                 rendered.should.equal(classOutput);
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('does NOT output a correctly formatted notification when db version equals package version', function (done) {
             apiStub.restore();
             apiStub = sandbox.stub(api.settings, 'read', function () {
-                return when({value: packageInfo.version});
+                return when({ settings: [{value: packageInfo.version}] });
             });
 
             helpers.update_notification.call({currentUser: {name: 'bob'}}).then(function (rendered) {
                 should.exist(rendered);
                 rendered.should.equal('');
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('does NOT output a notification if updateCheck is false', function (done) {
@@ -1223,14 +1227,14 @@ describe('Core Helpers', function () {
 
             apiStub.restore();
             apiStub = sandbox.stub(api.settings, 'read', function () {
-                return when({value: 'true'});
+                return when({ settings: [{value: 'true'}] });
             });
 
             helpers.update_notification.call({currentUser: {name: 'bob'}}).then(function (rendered) {
                 should.exist(rendered);
                 rendered.should.equal('');
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('does NOT output a notification if the user is not logged in', function (done) {
@@ -1238,14 +1242,14 @@ describe('Core Helpers', function () {
             apiStub = sandbox.stub(api.settings, 'read', function () {
                 var futureversion = packageInfo.version.split('.');
                 futureversion[futureversion.length-1] = parseInt(futureversion[futureversion.length-1], 10) + 1;
-                return when({value: futureversion.join('.')});
+                return when({ settings: [{value: futureversion.join('.')}] });
             });
 
             helpers.update_notification.call().then(function (rendered) {
                 should.exist(rendered);
                 rendered.should.equal('');
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
     });
 });

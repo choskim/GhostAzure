@@ -7,7 +7,7 @@ var downsize        = require('downsize'),
 
     api             = require('../api'),
     config          = require('../config'),
-    errors          = require('../errorHandling'),
+    errors          = require('../errors'),
     filters         = require('../filters'),
     template        = require('./template'),
     schema          = require('../data/schema').checks,
@@ -38,13 +38,13 @@ if (!isProduction) {
     hbs.handlebars.logger.level = 0;
 }
 
-/**
- * [ description]
- * @todo ghost core helpers + a way for themes to register them
- * @param  {Object} context date object
- * @param  {*} options
- * @return {Object} A Moment time / date object
- */
+
+ // [ description]
+ //
+ // @param  {Object} context date object
+ // @param  {*} options
+ // @return {Object} A Moment time / date object
+
 coreHelpers.date = function (context, options) {
     if (!options && context.hasOwnProperty('hash')) {
         options = context;
@@ -158,17 +158,21 @@ coreHelpers.url = function (options) {
 // *Usage example:*
 // `{{asset "css/screen.css"}}`
 // `{{asset "css/screen.css" ghost="true"}}`
+// `{{asset "css/screen.css" ember="true"}}`
 // Returns the path to the specified asset. The ghost
 // flag outputs the asset path for the Ghost admin
 coreHelpers.asset = function (context, options) {
     var output = '',
-        isAdmin = options && options.hash && options.hash.ghost;
+        isAdmin = options && options.hash && options.hash.ghost,
+        isEmberAdmin = options && options.hash && options.hash.ember;
 
     output += config().paths.subdir + '/';
 
     if (!context.match(/^favicon\.ico$/) && !context.match(/^shared/) && !context.match(/^asset/)) {
         if (isAdmin) {
             output += 'ghost/';
+        } else if (isEmberAdmin) {
+            output += 'ghost/ember/';
         } else {
             output += 'assets/';
         }
@@ -385,8 +389,9 @@ coreHelpers.body_class = function (options) {
         classes.push('page');
     }
 
-    return api.settings.read('activeTheme').then(function (activeTheme) {
-        var paths = config().paths.availableThemes[activeTheme.value],
+    return api.settings.read({context: {internal: true}, key: 'activeTheme'}).then(function (response) {
+        var activeTheme = response.settings[0],
+            paths = config().paths.availableThemes[activeTheme.value],
             view;
 
         if (post) {
@@ -445,8 +450,8 @@ coreHelpers.ghost_head = function (options) {
 
     head.push('<meta name="generator" content="Ghost ' + trimmedVersion + '" />');
 
-    head.push('<link rel="alternate" type="application/rss+xml" title="'
-        + _.escape(blog.title)  + '" href="' + config.urlFor('rss') + '">');
+    head.push('<link rel="alternate" type="application/rss+xml" title="' +
+        _.escape(blog.title)  + '" href="' + config.urlFor('rss') + '">');
 
     return coreHelpers.url.call(self, {hash: {absolute: true}}).then(function (url) {
         head.push('<link rel="canonical" href="' + url + '" />');
@@ -519,10 +524,10 @@ coreHelpers.meta_description = function (options) {
 /**
  * Localised string helpers
  *
- * @param String key
- * @param String default translation
+ * @param {String} key
+ * @param {String} default translation
  * @param {Object} options
- * @return String A correctly internationalised string
+ * @return {String} A correctly internationalised string
  */
 coreHelpers.e = function (key, defaultString, options) {
     var output;
@@ -530,9 +535,9 @@ coreHelpers.e = function (key, defaultString, options) {
         api.settings.read('defaultLang'),
         api.settings.read('forceI18n')
     ]).then(function (values) {
-        if (values[0].value === 'en'
-                && _.isEmpty(options.hash)
-                && _.isEmpty(values[1].value)) {
+        if (values[0].settings.value === 'en' &&
+                _.isEmpty(options.hash) &&
+                _.isEmpty(values[1].settings.value)) {
             output = defaultString;
         } else {
             output = polyglot().t(key, options.hash);
@@ -651,18 +656,18 @@ coreHelpers.pagination = function (options) {
         errors.logAndThrowError('pagination data is not an object or is a function');
         return;
     }
-    if (_.isUndefined(this.pagination.page) || _.isUndefined(this.pagination.pages)
-            || _.isUndefined(this.pagination.total) || _.isUndefined(this.pagination.limit)) {
+    if (_.isUndefined(this.pagination.page) || _.isUndefined(this.pagination.pages) ||
+            _.isUndefined(this.pagination.total) || _.isUndefined(this.pagination.limit)) {
         errors.logAndThrowError('All values must be defined for page, pages, limit and total');
         return;
     }
-    if ((!_.isUndefined(this.pagination.next) && !_.isNumber(this.pagination.next))
-            || (!_.isUndefined(this.pagination.prev) && !_.isNumber(this.pagination.prev))) {
+    if ((!_.isNull(this.pagination.next) && !_.isNumber(this.pagination.next)) ||
+            (!_.isNull(this.pagination.prev) && !_.isNumber(this.pagination.prev))) {
         errors.logAndThrowError('Invalid value, Next/Prev must be a number');
         return;
     }
-    if (!_.isNumber(this.pagination.page) || !_.isNumber(this.pagination.pages)
-            || !_.isNumber(this.pagination.total) || !_.isNumber(this.pagination.limit)) {
+    if (!_.isNumber(this.pagination.page) || !_.isNumber(this.pagination.pages) ||
+            !_.isNumber(this.pagination.total) || !_.isNumber(this.pagination.limit)) {
         errors.logAndThrowError('Invalid value, check page, pages, limit and total are numbers');
         return;
     }

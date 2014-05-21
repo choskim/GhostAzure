@@ -27,6 +27,36 @@ Tag = ghostBookshelf.Model.extend({
 
     posts: function () {
         return this.belongsToMany(Posts);
+    },
+
+    toJSON: function (options) {
+        var attrs = ghostBookshelf.Model.prototype.toJSON.call(this, options);
+
+        attrs.parent = attrs.parent || attrs.parent_id;
+        delete attrs.parent_id;
+
+        return attrs;
+    }
+}, {
+    /**
+    * Returns an array of keys permitted in a method's `options` hash, depending on the current method.
+    * @param {String} methodName The name of the method to check valid options for.
+    * @return {Array} Keys allowed in the `options` hash of the model's method.
+    */
+    permittedOptions: function (methodName) {
+        var options = ghostBookshelf.Model.permittedOptions(),
+
+            // whitelists for the `options` hash argument on methods, by method name.
+            // these are the only options that can be passed to Bookshelf / Knex.
+            validOptions = {
+                add: ['user']
+            };
+
+        if (validOptions[methodName]) {
+            options = options.concat(validOptions[methodName]);
+        }
+
+        return options;
     }
 });
 

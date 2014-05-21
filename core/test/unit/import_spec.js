@@ -5,7 +5,7 @@ var testUtils = require('../utils'),
     when      = require('when'),
     assert    = require('assert'),
     _         = require("lodash"),
-    errors    = require('../../server/errorHandling'),
+    errors    = require('../../server/errors'),
 
     // Stuff we are testing
     knex        = require("../../server/models/base").knex,
@@ -31,7 +31,7 @@ describe("Import", function () {
         // clear database... we need to initialise it manually for each test
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     afterEach(function () {
@@ -50,7 +50,7 @@ describe("Import", function () {
             importStub.restore();
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
     it("resolves 001", function (done) {
@@ -65,7 +65,7 @@ describe("Import", function () {
             importStub.restore();
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
     it("resolves 002", function (done) {
@@ -80,7 +80,7 @@ describe("Import", function () {
             importStub.restore();
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
     it("resolves 003", function (done) {
@@ -95,7 +95,7 @@ describe("Import", function () {
             importStub.restore();
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
     describe("000", function () {
@@ -107,7 +107,7 @@ describe("Import", function () {
                 return testUtils.insertDefaultUser();
             }).then(function () {
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
 
@@ -154,7 +154,7 @@ describe("Import", function () {
                 migrationStub.restore();
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
     });
 
@@ -167,7 +167,7 @@ describe("Import", function () {
                 return testUtils.insertDefaultUser();
             }).then(function () {
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it("safely imports data from 001", function (done) {
@@ -240,7 +240,7 @@ describe("Import", function () {
                 assert.equal(new Date(posts[1].published_at).getTime(), timestamp);
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it("doesn't import invalid post data from 001", function (done) {
@@ -257,7 +257,9 @@ describe("Import", function () {
             }).then(function () {
                 (1).should.eql(0, 'Data import should not resolve promise.');
             }, function (error) {
-                error.should.eql('Error importing data: Value in [posts.title] exceeds maximum length of 150 characters.');
+
+                error[0].message.should.eql('Value in [posts.title] exceeds maximum length of 150 characters.');
+                error[0].type.should.eql('ValidationError');
 
                 when.all([
                     knex("users").select(),
@@ -289,7 +291,7 @@ describe("Import", function () {
                     done();
                 });
 
-            }).then(null, done);
+            }).catch(done);
         });
 
         it("doesn't import invalid settings data from 001", function (done) {
@@ -303,7 +305,9 @@ describe("Import", function () {
             }).then(function () {
                 (1).should.eql(0, 'Data import should not resolve promise.');
             }, function (error) {
-                error.should.eql('Error importing data: Value in [settings.key] cannot be blank.');
+
+                error[0].message.should.eql('Setting key cannot be empty.');
+                error[0].type.should.eql('ValidationError');
 
                 when.all([
                     knex("users").select(),
@@ -335,7 +339,7 @@ describe("Import", function () {
                     done();
                 });
 
-            }).then(null, done);
+            }).catch(done);
         });
     });
 
@@ -348,7 +352,7 @@ describe("Import", function () {
                 return testUtils.insertDefaultUser();
             }).then(function () {
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it("safely imports data from 002", function (done) {
@@ -421,9 +425,9 @@ describe("Import", function () {
                 assert.equal(new Date(posts[1].published_at).getTime(), timestamp);
 
                 done();
-            }).otherwise(function (error) {
+            }).catch(function (error) {
                 done(new Error(error));
-            })
+            });
         });
 
         it("doesn't import invalid post data from 002", function (done) {
@@ -440,7 +444,9 @@ describe("Import", function () {
             }).then(function () {
                 (1).should.eql(0, 'Data import should not resolve promise.');
             }, function (error) {
-                error.should.eql('Error importing data: Value in [posts.title] exceeds maximum length of 150 characters.');
+
+                error[0].message.should.eql('Value in [posts.title] exceeds maximum length of 150 characters.');
+                error[0].type.should.eql('ValidationError');
 
                 when.all([
                     knex("users").select(),
@@ -472,7 +478,7 @@ describe("Import", function () {
                     done();
                 });
 
-            }).then(null, done);
+            }).catch(done);
         });
 
         it("doesn't import invalid settings data from 002", function (done) {
@@ -486,7 +492,9 @@ describe("Import", function () {
             }).then(function () {
                 (1).should.eql(0, 'Data import should not resolve promise.');
             }, function (error) {
-                error.should.eql('Error importing data: Value in [settings.key] cannot be blank.');
+
+                error[0].message.should.eql('Setting key cannot be empty.');
+                error[0].type.should.eql('ValidationError');
 
                 when.all([
                     knex("users").select(),
@@ -518,7 +526,7 @@ describe("Import", function () {
                     done();
                 });
 
-            }).then(null, done);
+            }).catch(done);
         });
     });
 
@@ -531,7 +539,7 @@ describe("Import", function () {
                 return testUtils.insertDefaultUser();
             }).then(function () {
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it("safely imports data from 003", function (done) {
@@ -561,7 +569,7 @@ describe("Import", function () {
                 // app_settings.length.should.equal(exportData.data.app_settings.length, 'imported app settings');
 
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
     });
 });

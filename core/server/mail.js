@@ -62,9 +62,7 @@ GhostMailer.prototype.usingSendmail = function () {
             "Ghost is attempting to use your server's <b>sendmail</b> to send e-mail.",
             "It is recommended that you explicitly configure an e-mail service,",
             "See <a href=\"http://docs.ghost.org/mail\">http://docs.ghost.org/mail</a> for instructions"
-        ].join(' '),
-        status: 'persistent',
-        id: 'ghost-mail-fallback'
+        ].join(' ')
     });
 };
 
@@ -74,9 +72,7 @@ GhostMailer.prototype.emailDisabled = function () {
         message: [
             "Ghost is currently unable to send e-mail.",
             "See <a href=\"http://docs.ghost.org/mail\">http://docs.ghost.org/mail</a> for instructions"
-        ].join(' '),
-        status: 'persistent',
-        id: 'ghost-mail-disabled'
+        ].join(' ')
     });
     this.transport = null;
 };
@@ -98,8 +94,10 @@ GhostMailer.prototype.fromAddress = function () {
 };
 
 // Sends an e-mail message enforcing `to` (blog owner) and `from` fields
-GhostMailer.prototype.send = function (message) {
-    var self = this;
+// GhostMailer.prototype.send = function (message) {
+GhostMailer.prototype.send = function (payload) {
+    var self = this,
+        message = payload;
 
     if (!this.transport) {
         return when.reject(new Error('Email Error: No e-mail transport configured.'));
@@ -108,8 +106,10 @@ GhostMailer.prototype.send = function (message) {
         return when.reject(new Error('Email Error: Incomplete message data.'));
     }
 
-    return api.settings.read('email').then(function (email) {
-        var to = message.to || email.value;
+    return api.settings.read('email').then(function (response) {
+
+        var email = response.settings[0],
+            to = message.to || email.value;
 
         message = _.extend(message, {
             from: self.fromAddress(),

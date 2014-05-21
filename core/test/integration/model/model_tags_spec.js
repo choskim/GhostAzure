@@ -15,20 +15,20 @@ describe('Tag Model', function () {
     before(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     beforeEach(function (done) {
         testUtils.initData()
             .then(function () {
                 done();
-            }, done);
+            }).catch(done);
     });
 
     afterEach(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     describe('a Post', function () {
@@ -49,11 +49,11 @@ describe('Tag Model', function () {
                 createdPostID = createdPost.id;
                 return createdPost.tags().attach(createdTag);
             }).then(function () {
-                return PostModel.read({id: createdPostID, status: 'all'}, { withRelated: ['tags']});
+                return PostModel.findOne({id: createdPostID, status: 'all'}, { withRelated: ['tags']});
             }).then(function (postWithTag) {
                 postWithTag.related('tags').length.should.equal(1);
                 done();
-            }).then(null, done);
+            }).catch(done);
 
         });
 
@@ -77,15 +77,15 @@ describe('Tag Model', function () {
                 createdTagID = createdTag.id;
                 return createdPost.tags().attach(createdTag);
             }).then(function () {
-                return PostModel.read({id: createdPostID, status: 'all'}, { withRelated: ['tags']});
+                return PostModel.findOne({id: createdPostID, status: 'all'}, { withRelated: ['tags']});
             }).then(function (postWithTag) {
                 return postWithTag.tags().detach(createdTagID);
             }).then(function () {
-                return PostModel.read({id: createdPostID, status: 'all'}, { withRelated: ['tags']});
+                return PostModel.findOne({id: createdPostID, status: 'all'}, { withRelated: ['tags']});
             }).then(function (postWithoutTag) {
                 postWithoutTag.related('tags').length.should.equal(0);
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         describe('setting tags from an array on update', function () {
@@ -114,7 +114,7 @@ describe('Tag Model', function () {
                         return postModel;
                     });
                 }).then(function (postModel) {
-                    return PostModel.read({id: postModel.id, status: 'all'}, { withRelated: ['tags']});
+                    return PostModel.findOne({id: postModel.id, status: 'all'}, { withRelated: ['tags']});
                 });
             }
 
@@ -135,8 +135,7 @@ describe('Tag Model', function () {
                     tagsFromDB.length.should.eql(seededTagNames.length + 1);
 
                     done();
-                }).then(null, done);
-
+                }).catch(done);
             });
 
             it('detaches tags that have been removed', function (done) {
@@ -150,13 +149,13 @@ describe('Tag Model', function () {
                     tagData.splice(1, 1);
                     return postModel.set('tags', tagData).save();
                 }).then(function (postModel) {
-                    return PostModel.read({id: postModel.id, status: 'all'}, { withRelated: ['tags']});
+                    return PostModel.findOne({id: postModel.id, status: 'all'}, { withRelated: ['tags']});
                 }).then(function (reloadedPost) {
                     var tagNames = reloadedPost.related('tags').models.map(function (t) { return t.attributes.name; });
                     tagNames.sort().should.eql(['tag1', 'tag3']);
 
                     done();
-                }).then(null, done);
+                }).catch(done);
             });
 
             it('attaches tags that are new to the post, but already exist in the database', function (done) {
@@ -174,19 +173,19 @@ describe('Tag Model', function () {
                     tagData.push({id: 3, name: 'tag3'});
                     return postModel.set('tags', tagData).save();
                 }).then(function () {
-                    return PostModel.read({id: postModel.id, status: 'all'}, { withRelated: ['tags']});
+                    return PostModel.findOne({id: postModel.id, status: 'all'}, { withRelated: ['tags']});
                 }).then(function (reloadedPost) {
                     var tagModels = reloadedPost.related('tags').models,
                         tagNames = tagModels.map(function (t) { return t.attributes.name; }),
                         tagIds = _.pluck(tagModels, 'id');
                     tagNames.sort().should.eql(['tag1', 'tag2', 'tag3']);
-                    
+
                     // make sure it hasn't just added a new tag with the same name
                     // Don't expect a certain order in results - check for number of items!
                     Math.max.apply(Math, tagIds).should.eql(4);
 
                     done();
-                }).then(null, done);
+                }).catch(done);
             });
 
             it('creates and attaches a tag that is new to the Tags table', function (done) {
@@ -200,13 +199,13 @@ describe('Tag Model', function () {
                     tagData.push({id: null, name: 'tag3'});
                     return postModel.set('tags', tagData).save(null, {user: 1});
                 }).then(function (postModel) {
-                    return PostModel.read({id: postModel.id, status: 'all'}, { withRelated: ['tags']});
+                    return PostModel.findOne({id: postModel.id, status: 'all'}, { withRelated: ['tags']});
                 }).then(function (reloadedPost) {
                     var tagNames = reloadedPost.related('tags').models.map(function (t) { return t.attributes.name; });
                     tagNames.sort().should.eql(['tag1', 'tag2', 'tag3']);
 
                     done();
-                }).then(null, done);
+                }).catch(done);
             });
 
             it('creates and attaches multiple tags that are new to the Tags table', function (done) {
@@ -221,13 +220,13 @@ describe('Tag Model', function () {
                     tagData.push({id: null, name: 'tag3'});
                     return postModel.set('tags', tagData).save(null, {user: 1});
                 }).then(function (postModel) {
-                    return PostModel.read({id: postModel.id, status: 'all'}, { withRelated: ['tags']});
+                    return PostModel.findOne({id: postModel.id, status: 'all'}, { withRelated: ['tags']});
                 }).then(function (reloadedPost) {
                     var tagNames = reloadedPost.related('tags').models.map(function (t) { return t.attributes.name; });
                     tagNames.sort().should.eql(['tag1', 'tag2', 'tag3']);
 
                     done();
-                }).then(null, done);
+                }).catch(done);
             });
 
             it('attaches one tag that exists in the Tags database and one tag that is new to the Tags database', function (done) {
@@ -249,20 +248,20 @@ describe('Tag Model', function () {
 
                     return postModel.set('tags', tagData).save(null, {user: 1});
                 }).then(function () {
-                    return PostModel.read({id: postModel.id, status: 'all'}, { withRelated: ['tags']});
+                    return PostModel.findOne({id: postModel.id, status: 'all'}, { withRelated: ['tags']});
                 }).then(function (reloadedPost) {
                     var tagModels = reloadedPost.related('tags').models,
                         tagNames = tagModels.map(function (t) { return t.attributes.name; }),
                         tagIds = _.pluck(tagModels, 'id');
 
                     tagNames.sort().should.eql(['tag1', 'tag2', 'tag3']);
-                    
+
                     // make sure it hasn't just added a new tag with the same name
                     // Don't expect a certain order in results - check for number of items!
                     Math.max.apply(Math, tagIds).should.eql(4);
 
                     done();
-                }).then(null, done);
+                }).catch(done);
             });
 
             it('attaches one tag that exists in the Tags database and two tags that are new to the Tags database', function (done) {
@@ -285,7 +284,7 @@ describe('Tag Model', function () {
 
                     return postModel.set('tags', tagData).save(null, {user: 1});
                 }).then(function () {
-                    return PostModel.read({id: postModel.id, status: 'all'}, { withRelated: ['tags']});
+                    return PostModel.findOne({id: postModel.id, status: 'all'}, { withRelated: ['tags']});
                 }).then(function (reloadedPost) {
                     var tagModels = reloadedPost.related('tags').models,
                         tagNames = tagModels.map(function (t) { return t.get('name'); }),
@@ -295,21 +294,21 @@ describe('Tag Model', function () {
 
                     // make sure it hasn't just added a new tag with the same name
                     // Don't expect a certain order in results - check for number of items!
-                    Math.max.apply(Math, tagIds).should.eql(5); 
+                    Math.max.apply(Math, tagIds).should.eql(5);
 
                     done();
-                }).then(null, done);
+                }).catch(done);
             });
 
             it('can add a tag to a post on creation', function (done) {
                 var newPost = _.extend(testUtils.DataGenerator.forModel.posts[0], {tags: [{name: 'test_tag_1'}]})
 
                 PostModel.add(newPost, {user: 1}).then(function (createdPost) {
-                    return PostModel.read({id: createdPost.id, status: 'all'}, { withRelated: ['tags']});
+                    return PostModel.findOne({id: createdPost.id, status: 'all'}, { withRelated: ['tags']});
                 }).then(function (postWithTag) {
                     postWithTag.related('tags').length.should.equal(1);
                     done();
-                }).then(null, done);
+                }).catch(done);
 
             });
         });

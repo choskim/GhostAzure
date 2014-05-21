@@ -43,7 +43,7 @@ describe('Settings API', function () {
                             pattern_meta.should.exist;
                             csrfToken = res.text.match(pattern_meta)[1];
 
-                            setTimeout(function () {
+                            process.nextTick(function() {
                                 request.post('/ghost/signin/')
                                     .set('X-CSRF-Token', csrfToken)
                                     .send({email: user.email, password: user.password})
@@ -61,17 +61,16 @@ describe('Settings API', function () {
                                                 if (err) {
                                                     return done(err);
                                                 }
-                                                // console.log('/ghost/', err, res);
                                                 csrfToken = res.text.match(pattern_meta)[1];
                                                 done();
                                             });
                                     });
 
-                            }, 2000);
+                            });
 
                         });
-                }, done);
-        }).otherwise(function (e) {
+                }).catch(done);
+        }).catch(function (e) {
             console.log('Ghost Error: ', e);
             console.log(e.stack);
         });
@@ -113,8 +112,10 @@ describe('Settings API', function () {
                 var jsonResponse = res.body;
 
                 jsonResponse.should.exist;
-                testUtils.API.checkResponseValue(jsonResponse, ['key', 'value']);
-                jsonResponse.key.should.eql('title');
+                jsonResponse.settings.should.exist;
+
+                testUtils.API.checkResponseValue(jsonResponse.settings[0], ['id','uuid','key','value','type','created_at','created_by','updated_at','updated_by']);
+                jsonResponse.settings[0].key.should.eql('title');
                 done();
             });
     });
@@ -131,7 +132,8 @@ describe('Settings API', function () {
                 res.should.be.json;
                 var jsonResponse = res.body;
                 jsonResponse.should.exist;
-                testUtils.API.checkResponseValue(jsonResponse, ['error']);
+                jsonResponse.errors.should.exist;
+                testUtils.API.checkResponseValue(jsonResponse.errors[0], ['message', 'type']);
                 done();
             });
     });
@@ -144,13 +146,19 @@ describe('Settings API', function () {
                 }
 
                 var jsonResponse = res.body,
-                    changedValue = 'Ghost changed';
+                    changedValue = 'Ghost changed',
+                    settingToChange = {
+                        settings: [
+                            { key: 'title', value: changedValue }
+                        ]
+                    };
+
                 jsonResponse.should.exist;
-                jsonResponse.title = changedValue;
+                jsonResponse.settings.should.exist;
 
                 request.put(testUtils.API.getApiQuery('settings/'))
                     .set('X-CSRF-Token', csrfToken)
-                    .send(jsonResponse)
+                    .send(settingToChange)
                     .expect(200)
                     .end(function (err, res) {
                         if (err) {
@@ -161,7 +169,7 @@ describe('Settings API', function () {
                         res.headers['x-cache-invalidate'].should.eql('/*');
                         res.should.be.json;
                         putBody.should.exist;
-                        putBody.title.should.eql(changedValue);
+                        putBody.settings[0].value.should.eql(changedValue);
                         testUtils.API.checkResponse(putBody, 'settings');
                         done();
                     });
@@ -169,7 +177,7 @@ describe('Settings API', function () {
     });
 
     it('can\'t edit settings with invalid CSRF token', function (done) {
-        request.get(testUtils.API.getApiQuery('settings'))
+        request.get(testUtils.API.getApiQuery('settings/'))
             .end(function (err, res) {
                 if (err) {
                     return done(err);
@@ -196,7 +204,7 @@ describe('Settings API', function () {
 
 
     it('can\'t edit non existent setting', function (done) {
-        request.get(testUtils.API.getApiQuery('settings'))
+        request.get(testUtils.API.getApiQuery('settings/'))
             .end(function (err, res) {
                 if (err) {
                     return done(err);
@@ -205,7 +213,8 @@ describe('Settings API', function () {
                 var jsonResponse = res.body,
                     newValue = 'new value';
                 jsonResponse.should.exist;
-                jsonResponse.testvalue = newValue;
+                should.exist(jsonResponse.settings);
+                jsonResponse.settings = [{ key: 'testvalue', value: newValue }];
 
                 request.put(testUtils.API.getApiQuery('settings/'))
                     .set('X-CSRF-Token', csrfToken)
@@ -216,10 +225,11 @@ describe('Settings API', function () {
                             return done(err);
                         }
 
-                        var putBody = res.body;
+                        jsonResponse = res.body;
                         should.not.exist(res.headers['x-cache-invalidate']);
                         res.should.be.json;
-                        testUtils.API.checkResponseValue(putBody, ['error']);
+                        jsonResponse.errors.should.exist;
+                        testUtils.API.checkResponseValue(jsonResponse.errors[0], ['message', 'type']);
                         done();
                     });
             });

@@ -43,7 +43,7 @@ describe('Post API', function () {
                             pattern_meta.should.exist;
                             csrfToken = res.text.match(pattern_meta)[1];
 
-                            setTimeout(function () {
+                            process.nextTick(function() {
                                 request.post('/ghost/signin/')
                                     .set('X-CSRF-Token', csrfToken)
                                     .send({email: user.email, password: user.password})
@@ -61,21 +61,21 @@ describe('Post API', function () {
                                                 if (err) {
                                                     return done(err);
                                                 }
-                                                
+
                                                 csrfToken = res.text.match(pattern_meta)[1];
                                                 done();
                                             });
                                     });
 
-                            }, 2000);
+                            });
 
                         });
-                }, done);
-        }).otherwise(function (e) {
+                }).catch(done);
+        }).catch(function (e) {
             console.log('Ghost Error: ', e);
             console.log(e.stack);
         });
-    });    
+    });
 
     after(function () {
         httpServer.close();
@@ -99,6 +99,9 @@ describe('Post API', function () {
                     testUtils.API.checkResponse(jsonResponse, 'posts');
                     jsonResponse.posts.should.have.length(5);
                     testUtils.API.checkResponse(jsonResponse.posts[0], 'post');
+                    testUtils.API.checkResponse(jsonResponse.meta.pagination, 'pagination');
+                    _.isBoolean(jsonResponse.posts[0].featured).should.eql(true);
+                    _.isBoolean(jsonResponse.posts[0].page).should.eql(true);
                     done();
                 });
         });
@@ -118,9 +121,10 @@ describe('Post API', function () {
                     testUtils.API.checkResponse(jsonResponse, 'posts');
                     jsonResponse.posts.should.have.length(6);
                     testUtils.API.checkResponse(jsonResponse.posts[0], 'post');
+                    testUtils.API.checkResponse(jsonResponse.meta.pagination, 'pagination');
                     done();
                 });
-                
+
         });
 
         // Test bits of the API we don't use in the app yet to ensure the API behaves properly
@@ -140,6 +144,7 @@ describe('Post API', function () {
                     testUtils.API.checkResponse(jsonResponse, 'posts');
                     jsonResponse.posts.should.have.length(8);
                     testUtils.API.checkResponse(jsonResponse.posts[0], 'post');
+                    testUtils.API.checkResponse(jsonResponse.meta.pagination, 'pagination');
                     done();
                 });
         });
@@ -159,6 +164,7 @@ describe('Post API', function () {
                     testUtils.API.checkResponse(jsonResponse, 'posts');
                     jsonResponse.posts.should.have.length(1);
                     testUtils.API.checkResponse(jsonResponse.posts[0], 'post');
+                    testUtils.API.checkResponse(jsonResponse.meta.pagination, 'pagination');
                     done();
                 });
         });
@@ -178,6 +184,7 @@ describe('Post API', function () {
                     testUtils.API.checkResponse(jsonResponse, 'posts');
                     jsonResponse.posts.should.have.length(1);
                     testUtils.API.checkResponse(jsonResponse.posts[0], 'post');
+                    testUtils.API.checkResponse(jsonResponse.meta.pagination, 'pagination');
                     done();
                 });
         });
@@ -186,7 +193,7 @@ describe('Post API', function () {
 
     // ## Read
     describe('Read', function () {
-        it('can retrieve a post', function (done) {
+        it('can retrieve a post by id', function (done) {
             request.get(testUtils.API.getApiQuery('posts/1/'))
                 .end(function (err, res) {
                     if (err) {
@@ -200,7 +207,62 @@ describe('Post API', function () {
                     jsonResponse.should.exist;
                     jsonResponse.posts.should.exist;
                     testUtils.API.checkResponse(jsonResponse.posts[0], 'post');
+                    jsonResponse.posts[0].id.should.equal(1);
                     jsonResponse.posts[0].page.should.eql(0);
+                    _.isBoolean(jsonResponse.posts[0].featured).should.eql(true);
+                    _.isBoolean(jsonResponse.posts[0].page).should.eql(true);
+                    jsonResponse.posts[0].author.should.be.a.Number;
+                    jsonResponse.posts[0].created_by.should.be.a.Number;
+                    jsonResponse.posts[0].tags[0].should.be.a.Number;
+                    done();
+                });
+        });
+
+        it('can retrieve a post by slug', function (done) {
+            request.get(testUtils.API.getApiQuery('posts/welcome-to-ghost/'))
+                .end(function (err, res) {
+                    if (err) {
+                        return done(err);
+                    }
+
+                    res.should.have.status(200);
+                    should.not.exist(res.headers['x-cache-invalidate']);
+                    res.should.be.json;
+                    var jsonResponse = res.body;
+                    jsonResponse.should.exist;
+                    jsonResponse.posts.should.exist;
+                    testUtils.API.checkResponse(jsonResponse.posts[0], 'post');
+                    jsonResponse.posts[0].slug.should.equal('welcome-to-ghost');
+                    jsonResponse.posts[0].page.should.eql(0);
+                    _.isBoolean(jsonResponse.posts[0].featured).should.eql(true);
+                    _.isBoolean(jsonResponse.posts[0].page).should.eql(true);
+                    jsonResponse.posts[0].author.should.be.a.Number;
+                    jsonResponse.posts[0].created_by.should.be.a.Number;
+                    jsonResponse.posts[0].tags[0].should.be.a.Number;
+                    done();
+                });
+        });
+
+        it('can retrieve a post with author, created_by, and tags', function (done) {
+            request.get(testUtils.API.getApiQuery('posts/1/?include=author,tags,created_by'))
+                .end(function (err, res) {
+                    if (err) {
+                        return done(err);
+                    }
+
+                    res.should.have.status(200);
+                    should.not.exist(res.headers['x-cache-invalidate']);
+                    res.should.be.json;
+                    var jsonResponse = res.body;
+                    jsonResponse.should.exist;
+                    jsonResponse.posts.should.exist;
+                    testUtils.API.checkResponse(jsonResponse.posts[0], 'post');
+                    jsonResponse.posts[0].page.should.eql(0);
+
+                    jsonResponse.posts[0].author.should.be.an.Object;
+                    testUtils.API.checkResponse(jsonResponse.posts[0].author, 'user');
+                    jsonResponse.posts[0].tags[0].should.be.an.Object;
+                    testUtils.API.checkResponse(jsonResponse.posts[0].tags[0], 'tag');
                     done();
                 });
         });
@@ -219,7 +281,8 @@ describe('Post API', function () {
                     jsonResponse.should.exist;
                     jsonResponse.posts.should.exist;
                     testUtils.API.checkResponse(jsonResponse.posts[0], 'post');
-                    jsonResponse.posts[0].page.should.eql(1);
+                    jsonResponse.posts[0].page.should.eql(true);
+                    _.isBoolean(jsonResponse.posts[0].page).should.eql(true);
                     done();
                 });
         });
@@ -236,7 +299,8 @@ describe('Post API', function () {
                     res.should.be.json;
                     var jsonResponse = res.body;
                     jsonResponse.should.exist;
-                    testUtils.API.checkResponseValue(jsonResponse, ['error']);
+                    jsonResponse.errors.should.exist;
+                    testUtils.API.checkResponseValue(jsonResponse.errors[0], ['message', 'type']);
                     done();
                 });
         });
@@ -253,7 +317,8 @@ describe('Post API', function () {
                     res.should.be.json;
                     var jsonResponse = res.body;
                     jsonResponse.should.exist;
-                    testUtils.API.checkResponseValue(jsonResponse, ['error']);
+                    jsonResponse.errors.should.exist;
+                    testUtils.API.checkResponseValue(jsonResponse.errors[0], ['message', 'type']);
                     done();
                 });
         });
@@ -270,7 +335,8 @@ describe('Post API', function () {
                     res.should.be.json;
                     var jsonResponse = res.body;
                     jsonResponse.should.exist;
-                    testUtils.API.checkResponseValue(jsonResponse, ['error']);
+                    jsonResponse.errors.should.exist;
+                    testUtils.API.checkResponseValue(jsonResponse.errors[0], ['message', 'type']);
                     done();
                 });
         });
@@ -281,11 +347,12 @@ describe('Post API', function () {
     describe('Add', function () {
         it('can create a new draft, publish post, update post', function (done) {
             var newTitle = 'My Post',
-                changedTitle = 'My Post changed',
+                newTagName = 'My Tag',
                 publishedState = 'published',
-                newPost = {posts: [{status: 'draft', title: newTitle, markdown: 'my post'}]};
+                newTag = {id: null, name: newTagName},
+                newPost = {posts: [{status: 'draft', title: newTitle, markdown: 'my post', tags: [newTag]}]};
 
-            request.post(testUtils.API.getApiQuery('posts/'))
+            request.post(testUtils.API.getApiQuery('posts/?include=tags'))
                 .set('X-CSRF-Token', csrfToken)
                 .send(newPost)
                 .expect(200)
@@ -296,12 +363,19 @@ describe('Post API', function () {
 
                     res.should.be.json;
                     var draftPost = res.body;
+                    res.headers['location'].should.equal('/ghost/api/v0.1/posts/' + draftPost.posts[0].id + '/?status=draft');
                     draftPost.posts.should.exist;
+                    draftPost.posts.length.should.be.above(0);
                     draftPost.posts[0].title.should.eql(newTitle);
                     draftPost.posts[0].status = publishedState;
                     testUtils.API.checkResponse(draftPost.posts[0], 'post');
 
-                    request.put(testUtils.API.getApiQuery('posts/' + draftPost.posts[0].id + '/'))
+                    draftPost.posts[0].tags.should.exist;
+                    draftPost.posts[0].tags.length.should.be.above(0);
+                    draftPost.posts[0].tags[0].name.should.eql(newTagName);
+                    testUtils.API.checkResponse(draftPost.posts[0].tags[0], 'tag');
+
+                    request.put(testUtils.API.getApiQuery('posts/' + draftPost.posts[0].id + '/?include=tags'))
                         .set('X-CSRF-Token', csrfToken)
                         .send(draftPost)
                         .expect(200)
@@ -311,15 +385,23 @@ describe('Post API', function () {
                             }
 
                             var publishedPost = res.body;
+                            _.has(res.headers, 'x-cache-invalidate').should.equal(true);
                             res.headers['x-cache-invalidate'].should.eql('/, /page/*, /rss/, /rss/*, /tag/*, /' + publishedPost.posts[0].slug + '/');
                             res.should.be.json;
+
                             publishedPost.should.exist;
                             publishedPost.posts.should.exist;
+                            publishedPost.posts.length.should.be.above(0);
                             publishedPost.posts[0].title.should.eql(newTitle);
                             publishedPost.posts[0].status.should.eql(publishedState);
                             testUtils.API.checkResponse(publishedPost.posts[0], 'post');
 
-                            request.put(testUtils.API.getApiQuery('posts/' + publishedPost.posts[0].id + '/'))
+                            publishedPost.posts[0].tags.should.exist;
+                            publishedPost.posts[0].tags.length.should.be.above(0);
+                            publishedPost.posts[0].tags[0].name.should.eql(newTagName);
+                            testUtils.API.checkResponse(publishedPost.posts[0].tags[0], 'tag');
+
+                            request.put(testUtils.API.getApiQuery('posts/' + publishedPost.posts[0].id + '/?include=tags'))
                                 .set('X-CSRF-Token', csrfToken)
                                 .send(publishedPost)
                                 .expect(200)
@@ -329,12 +411,20 @@ describe('Post API', function () {
                                     }
 
                                     var updatedPost = res.body;
-                                    res.headers['x-cache-invalidate'].should.eql('/, /page/*, /rss/, /rss/*, /tag/*, /' + updatedPost.posts[0].slug + '/');
+                                    _.has(res.headers, 'x-cache-invalidate').should.equal(false);
                                     res.should.be.json;
+
                                     updatedPost.should.exist;
                                     updatedPost.posts.should.exist;
+                                    updatedPost.posts.length.should.be.above(0);
                                     updatedPost.posts[0].title.should.eql(newTitle);
                                     testUtils.API.checkResponse(updatedPost.posts[0], 'post');
+
+                                    updatedPost.posts[0].tags.should.exist;
+                                    updatedPost.posts[0].tags.length.should.be.above(0);
+                                    updatedPost.posts[0].tags[0].name.should.eql(newTagName);
+                                    testUtils.API.checkResponse(updatedPost.posts[0].tags[0], 'tag');
+
                                     done();
                                 });
                         });
@@ -347,7 +437,7 @@ describe('Post API', function () {
     // ## edit
     describe('Edit', function () {
         it('can edit a post', function (done) {
-            request.get(testUtils.API.getApiQuery('posts/1/'))
+            request.get(testUtils.API.getApiQuery('posts/1/?include=tags'))
                 .end(function (err, res) {
                     if (err) {
                         return done(err);
@@ -368,7 +458,7 @@ describe('Post API', function () {
                             }
 
                             var putBody = res.body;
-                            res.headers['x-cache-invalidate'].should.eql('/, /page/*, /rss/, /rss/*, /tag/*, /' + putBody.posts[0].slug + '/');
+                            _.has(res.headers, 'x-cache-invalidate').should.equal(false);
                             res.should.be.json;
                             putBody.should.exist;
                             putBody.posts[0].title.should.eql(changedValue);
@@ -380,7 +470,7 @@ describe('Post API', function () {
         });
 
         it('can change a post to a static page', function (done) {
-            request.get(testUtils.API.getApiQuery('posts/1/'))
+            request.get(testUtils.API.getApiQuery('posts/1/?include=tags'))
                 .end(function (err, res) {
                     if (err) {
                         return done(err);
@@ -402,7 +492,7 @@ describe('Post API', function () {
                             }
 
                             var putBody = res.body;
-                            res.headers['x-cache-invalidate'].should.eql('/, /page/*, /rss/, /rss/*, /tag/*, /' + putBody.posts[0].slug + '/');
+                            _.has(res.headers, 'x-cache-invalidate').should.equal(false);
                             res.should.be.json;
                             putBody.should.exist;
                             putBody.posts[0].page.should.eql(changedValue);
@@ -412,7 +502,6 @@ describe('Post API', function () {
                         });
                 });
         });
-
 
         it('can change a static page to a post', function (done) {
             request.get(testUtils.API.getApiQuery('posts/7/'))
@@ -424,10 +513,10 @@ describe('Post API', function () {
                     var jsonResponse = res.body,
                         changedValue = false;
                     jsonResponse.should.exist;
-                    jsonResponse.posts[0].page.should.eql(1);
+                    jsonResponse.posts[0].page.should.eql(true);
                     jsonResponse.posts[0].page = changedValue;
 
-                    request.put(testUtils.API.getApiQuery('posts/1/'))
+                    request.put(testUtils.API.getApiQuery('posts/7/'))
                         .set('X-CSRF-Token', csrfToken)
                         .send(jsonResponse)
                         .expect(200)
@@ -437,12 +526,45 @@ describe('Post API', function () {
                             }
 
                             var putBody = res.body;
-                            res.headers['x-cache-invalidate'].should.eql('/, /page/*, /rss/, /rss/*, /tag/*, /' + putBody.posts[0].slug + '/');
+
+                            _.has(res.headers, 'x-cache-invalidate').should.equal(false);
                             res.should.be.json;
                             putBody.should.exist;
                             putBody.posts[0].page.should.eql(changedValue);
-
                             testUtils.API.checkResponse(putBody.posts[0], 'post');
+                            done();
+                        });
+                });
+        });
+
+        it('can\'t edit post with invalid page field', function (done) {
+            request.get(testUtils.API.getApiQuery('posts/7/'))
+                .end(function (err, res) {
+                    if (err) {
+                        return done(err);
+                    }
+
+                    var jsonResponse = res.body,
+                        changedValue = 'invalid';
+                    jsonResponse.should.exist;
+                    jsonResponse.posts[0].page.should.eql(false);
+                    jsonResponse.posts[0].page = changedValue;
+
+                    request.put(testUtils.API.getApiQuery('posts/7/'))
+                        .set('X-CSRF-Token', csrfToken)
+                        .send(jsonResponse)
+                        .expect(422)
+                        .end(function (err, res) {
+                            if (err) {
+                                return done(err);
+                            }
+
+                            var putBody = res.body;
+                            _.has(res.headers, 'x-cache-invalidate').should.equal(false);
+                            res.should.be.json;
+                            jsonResponse = res.body;
+                            jsonResponse.errors.should.exist;
+                            testUtils.API.checkResponseValue(jsonResponse.errors[0], ['message', 'type']);
                             done();
                         });
                 });
@@ -471,7 +593,7 @@ describe('Post API', function () {
         });
 
         it('published_at = null', function (done) {
-            request.get(testUtils.API.getApiQuery('posts/1/'))
+            request.get(testUtils.API.getApiQuery('posts/1/?include=tags'))
                 .end(function (err, res) {
                     if (err) {
                         return done(err);
@@ -493,7 +615,7 @@ describe('Post API', function () {
                             }
 
                             var putBody = res.body;
-                            res.headers['x-cache-invalidate'].should.eql('/, /page/*, /rss/, /rss/*, /tag/*, /' + putBody.posts[0].slug + '/');
+                            _.has(res.headers, 'x-cache-invalidate').should.equal(false);
                             res.should.be.json;
                             putBody.should.exist;
                             putBody.posts.should.exist;
@@ -508,10 +630,6 @@ describe('Post API', function () {
                 });
         });
 
-    });
-
-    // ## delete
-    describe('Delete', function () {
         it('can\'t edit non existent post', function (done) {
             request.get(testUtils.API.getApiQuery('posts/1/'))
                 .end(function (err, res) {
@@ -533,15 +651,20 @@ describe('Post API', function () {
                                 return done(err);
                             }
 
-                            var putBody = res.body;
-                            should.not.exist(res.headers['x-cache-invalidate']);
+                            _.has(res.headers, 'x-cache-invalidate').should.equal(false);
                             res.should.be.json;
-                            testUtils.API.checkResponseValue(putBody, ['error']);
+                            jsonResponse = res.body;
+                            jsonResponse.errors.should.exist;
+                            testUtils.API.checkResponseValue(jsonResponse.errors[0], ['message', 'type']);
                             done();
                         });
                 });
         });
 
+    });
+
+    // ## delete
+    describe('Delete', function () {
         it('can delete a post', function (done) {
             var deletePostId = 1;
             request.del(testUtils.API.getApiQuery('posts/' + deletePostId + '/'))
@@ -576,7 +699,8 @@ describe('Post API', function () {
                     res.should.be.json;
                     var jsonResponse = res.body;
                     jsonResponse.should.exist;
-                    testUtils.API.checkResponseValue(jsonResponse, ['error']);
+                    jsonResponse.errors.should.exist;
+                    testUtils.API.checkResponseValue(jsonResponse.errors[0], ['message', 'type']);
                     done();
                 });
         });
@@ -692,7 +816,7 @@ describe('Post API', function () {
         });
 
         it('Can edit a post', function (done) {
-            request.get(testUtils.API.getApiQuery('posts/2/'))
+            request.get(testUtils.API.getApiQuery('posts/2/?include=tags'))
                 .end(function (err, res) {
                     if (err) {
                         return done(err);
@@ -719,7 +843,7 @@ describe('Post API', function () {
                                 yyyy = today.getFullYear(),
                                 postLink = '/' + yyyy + '/' + mm + '/' + dd + '/' + putBody.posts[0].slug + '/';
 
-                            res.headers['x-cache-invalidate'].should.eql('/, /page/*, /rss/, /rss/*, /tag/*, ' + postLink);
+                            _.has(res.headers, 'x-cache-invalidate').should.equal(false);
                             res.should.be.json;
                             putBody.should.exist;
                             putBody.posts[0].title.should.eql(changedValue);
@@ -729,9 +853,5 @@ describe('Post API', function () {
                         });
                 });
         });
-
-
     });
-
-
 });

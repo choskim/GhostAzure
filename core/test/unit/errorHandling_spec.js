@@ -8,7 +8,7 @@ var testUtils  = require('../utils'),
 
     // Stuff we are testing
     colors     = require('colors'),
-    errors     = rewire('../../server/errorHandling'),
+    errors     = rewire('../../server/errors'),
     // storing current environment
     currentEnv = process.env.NODE_ENV;
 
@@ -366,6 +366,6 @@ describe('Error handling', function () {
                 next = null;
             errors.updateActiveTheme('theme-with-error');
             errors.renderErrorPage(code, error, req, res, next);
-        })
+        });
     });
 });

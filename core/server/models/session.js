@@ -19,11 +19,11 @@ Session = ghostBookshelf.Model.extend({
         /*jshint unused:false*/
         // Remove any properties which don't belong on the model
         this.attributes = this.pick(this.permittedAttributes());
-    },
+    }
 
 }, {
     destroyAll:  function (options) {
-        options = options || {};
+        options = this.filterOptions(options, 'destroyAll');
         return ghostBookshelf.Collection.forge([], {model: this}).fetch()
             .then(function (collection) {
                 collection.invokeThen('destroy', options);

@@ -1,6 +1,8 @@
 var schema    = require('../schema').tables,
     _         = require('lodash'),
     validator = require('validator'),
+    when      = require('when'),
+    errors    = require('../../errors'),
 
     validateSchema,
     validateSettings,
@@ -20,14 +22,17 @@ validator.extend('notContains', function (str, badString) {
 // values are checked against the validation objects
 // form schema.js
 validateSchema = function (tableName, model) {
-    var columns = _.keys(schema[tableName]);
+    var columns = _.keys(schema[tableName]),
+        validationErrors = [];
 
     _.each(columns, function (columnKey) {
+        var message = '';
         // check nullable
         if (model.hasOwnProperty(columnKey) && schema[tableName][columnKey].hasOwnProperty('nullable')
                 && schema[tableName][columnKey].nullable !== true) {
             if (validator.isNull(model[columnKey]) || validator.empty(model[columnKey])) {
-                throw new Error('Value in [' + tableName + '.' + columnKey + '] cannot be blank.');
+                message = 'Value in [' + tableName + '.' + columnKey + '] cannot be blank.';
+                validationErrors.push(new errors.ValidationError(message, tableName + '.' + columnKey));
             }
         }
         // TODO: check if mandatory values should be enforced
@@ -35,24 +40,30 @@ validateSchema = function (tableName, model) {
             // check length
             if (schema[tableName][columnKey].hasOwnProperty('maxlength')) {
                 if (!validator.isLength(model[columnKey], 0, schema[tableName][columnKey].maxlength)) {
-                    throw new Error('Value in [' + tableName + '.' + columnKey +
-                        '] exceeds maximum length of ' + schema[tableName][columnKey].maxlength + ' characters.');
+                    message = 'Value in [' + tableName + '.' + columnKey + '] exceeds maximum length of '
+                        + schema[tableName][columnKey].maxlength + ' characters.';
+                    validationErrors.push(new errors.ValidationError(message, tableName + '.' + columnKey));
                 }
             }
 
             //check validations objects
             if (schema[tableName][columnKey].hasOwnProperty('validations')) {
-                validate(model[columnKey], columnKey, schema[tableName][columnKey].validations);
+                validationErrors = validationErrors.concat(validate(model[columnKey], columnKey, schema[tableName][columnKey].validations));
             }
 
             //check type
             if (schema[tableName][columnKey].hasOwnProperty('type')) {
                 if (schema[tableName][columnKey].type === 'integer' && !validator.isInt(model[columnKey])) {
-                    throw new Error('Value in [' + tableName + '.' + columnKey + '] is no valid integer.');
+                    message = 'Value in [' + tableName + '.' + columnKey + '] is no valid integer.';
+                    validationErrors.push(new errors.ValidationError(message, tableName + '.' + columnKey));
                 }
             }
         }
     });
+
+    if (validationErrors.length !== 0) {
+        return when.reject(validationErrors);
+    }
 };
 
 // Validation for settings
@@ -60,10 +71,15 @@ validateSchema = function (tableName, model) {
 // form default-settings.json
 validateSettings = function (defaultSettings, model) {
     var values = model.toJSON(),
+        validationErrors = [],
         matchingDefault = defaultSettings[values.key];
 
     if (matchingDefault && matchingDefault.validations) {
-        validate(values.value, values.key, matchingDefault.validations);
+        validationErrors = validationErrors.concat(validate(values.value, values.key, matchingDefault.validations));
+    }
+
+    if (validationErrors.length !== 0) {
+        return when.reject(validationErrors);
     }
 };
 
@@ -85,6 +101,7 @@ validateSettings = function (defaultSettings, model) {
 //
 // available validators: https://github.com/chriso/validator.js#validators
 validate = function (value, key, validations) {
+    var validationErrors = [];
     _.each(validations, function (validationOptions, validationName) {
         var goodResult = true;
 
@@ -99,11 +116,13 @@ validate = function (value, key, validations) {
 
         // equivalent of validator.isSomething(option1, option2)
         if (validator[validationName].apply(validator, validationOptions) !== goodResult) {
-            throw new Error('Settings validation (' + validationName + ') failed for ' + key);
+            validationErrors.push(new errors.ValidationError('Settings validation (' + validationName + ') failed for ' + key, key));
         }
 
         validationOptions.shift();
     }, this);
+
+    return validationErrors;
 };
 
 module.exports = {

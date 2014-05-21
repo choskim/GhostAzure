@@ -33,7 +33,7 @@ CasperTest.begin("Ghost editor is correct", 10, function suite(test) {
 
     casper.thenClick('.js-publish-button');
 
-    casper.waitForResource(/\/posts\/$/, function checkPostWasCreated() {
+    casper.waitForResource(/posts\/\?include=tags$/, function checkPostWasCreated() {
         var urlRegExp = new RegExp("^" + escapedUrl + "ghost\/editor\/[0-9]*");
         test.assertUrlMatch(urlRegExp, 'got an id on our URL');
         test.assertExists('.notification-success', 'got success notification');
@@ -376,7 +376,7 @@ CasperTest.begin('Publish menu - existing post', 22, function suite(test) {
     // Create a post in draft status
     casper.thenClick('.js-publish-button');
 
-    casper.waitForResource(/posts\/$/, function checkPostWasCreated() {
+    casper.waitForResource(/posts\/\?include=tags$/, function checkPostWasCreated() {
         var urlRegExp = new RegExp("^" + escapedUrl + "ghost\/editor\/[0-9]*");
         test.assertUrlMatch(urlRegExp, 'got an id on our URL');
     });
@@ -413,7 +413,7 @@ CasperTest.begin('Publish menu - existing post', 22, function suite(test) {
     // Publish the post
     casper.thenClick('.js-publish-button');
 
-    casper.waitForResource(/posts\/$/, function checkPostWasCreated() {
+    casper.waitForResource(/posts\/\?include=tags$/, function checkPostWasCreated() {
         var urlRegExp = new RegExp("^" + escapedUrl + "ghost\/editor\/[0-9]*");
         test.assertUrlMatch(urlRegExp, 'got an id on our URL');
     });
@@ -504,5 +504,30 @@ CasperTest.begin('Admin navigation bar is correct', 28, function suite(test) {
         test.assertExists('#usermenu li.usermenu-signout a', 'Sign Out menu item exists');
         test.assertSelectorHasText('#usermenu li.usermenu-signout a', 'Sign Out', 'Sign Out menu item has correct text');
         test.assertEquals(this.getElementAttribute('#usermenu li.usermenu-signout a', 'href'), '/ghost/signout/', 'Sign Out href is correct');
+    });
+});
+
+// test the markdown help modal
+CasperTest.begin('Markdown help modal', 4, function suite(test) {
+    casper.thenOpen(url + 'ghost/editor/', function testTitleAndUrl() {
+        test.assertTitle('Ghost Admin', 'Ghost admin has no title');
+    });
+
+    // open markdown help modal
+    casper.thenClick('a.markdown-help');
+
+    casper.waitUntilVisible('#modal-container', function onSuccess() {
+        test.assertSelectorHasText(
+            '.modal-content .modal-header',
+            'Markdown Help',
+            'delete modal has correct text');
+
+        test.assertExists('.modal-content .close');
+    });
+
+    casper.thenClick('.modal-content .close');
+
+    casper.waitWhileVisible('#modal-container', function onSuccess() {
+        test.assert(true, 'clicking close should remove the markdown help modal');
     });
 });

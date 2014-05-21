@@ -9,6 +9,7 @@ var request    = require('supertest'),
     express    = require('express'),
     should     = require('should'),
     moment     = require('moment'),
+    path       = require('path'),
 
     testUtils  = require('../../utils'),
     ghost      = require('../../../../core'),
@@ -51,8 +52,8 @@ describe('Frontend Routing', function () {
                 return testUtils.initData();
             }).then(function () {
                 done();
-            }, done);
-        }).otherwise(function (e) {
+            }).catch(done);
+        }).catch(function (e) {
             console.log('Ghost Error: ', e);
             console.log(e.stack);
         });
@@ -117,6 +118,72 @@ describe('Frontend Routing', function () {
         });
     });
 
+    describe('Post edit', function () {
+        it('should redirect without slash', function (done) {
+            request.get('/welcome-to-ghost/edit')
+                .expect('Location', '/welcome-to-ghost/edit/')
+                .expect('Cache-Control', cacheRules.year)
+                .expect(301)
+                .end(doEnd(done));
+        });
+
+        it('should redirect to editor', function (done) {
+            request.get('/welcome-to-ghost/edit/')
+                .expect('Location', '/ghost/editor/1/')
+                .expect('Cache-Control', cacheRules['public'])
+                .expect(302)
+                .end(doEnd(done));
+        });
+
+        it('should 404 for non-edit parameter', function (done) {
+            request.get('/welcome-to-ghost/notedit/')
+                .expect('Cache-Control', cacheRules['private'])
+                .expect(404)
+                .expect(/Page Not Found/)
+                .end(doEnd(done));
+        });
+    });
+    
+    // we'll use X-Forwarded-Proto: https to simulate an 'https://' request behind a proxy
+    describe('HTTPS', function() {
+        var forkedGhost, request;
+        before(function (done) {
+            var configTestHttps = testUtils.fork.config();
+            configTestHttps.forceAdminSSL = {redirect: false};
+            configTestHttps.urlSSL = 'https://localhost/';
+
+            testUtils.fork.ghost(configTestHttps, 'testhttps')
+                .then(function(child) {
+                    forkedGhost = child;
+                    request = require('supertest');
+                    request = request(configTestHttps.url.replace(/\/$/, ''));
+                }).then(done).catch(done);
+        });
+        
+        after(function (done) {
+            if (forkedGhost) {
+                forkedGhost.kill(done);
+            }
+        });
+        
+        it('should set links to url over non-HTTPS', function(done) {
+            request.get('/')
+                .expect(200)
+                .expect(/\<link rel="canonical" href="http:\/\/127.0.0.1:2370\/" \/\>/)
+                .expect(/copyright \<a href="http:\/\/127.0.0.1:2370\/">Ghost\<\/a\>/)
+                .end(doEnd(done));
+        });
+
+        it('should set links to urlSSL over HTTPS', function(done) {
+            request.get('/')
+                .set('X-Forwarded-Proto', 'https')
+                .expect(200)
+                .expect(/\<link rel="canonical" href="https:\/\/localhost\/" \/\>/)
+                .expect(/copyright \<a href="https:\/\/localhost\/">Ghost\<\/a\>/)
+                .end(doEnd(done));
+        });
+    });
+
     describe('RSS', function () {
         it('should redirect without slash', function (done) {
             request.get('/rss')
@@ -164,7 +231,7 @@ describe('Frontend Routing', function () {
                 return testUtils.insertMorePosts(11);
             }).then(function () {
                 done();
-            }).then(null, done);
+            }).catch(done);
         });
 
         it('should redirect without slash', function (done) {
@@ -351,7 +418,7 @@ describe('Frontend Routing', function () {
                 .expect('Cache-Control', cacheRules.year)
                 .expect(200)
                 .end(doEnd(done));
-        })
+        });
 
         // at the moment there is no image fixture to test
         // it('should retrieve image assets', function (done) {
@@ -373,11 +440,11 @@ describe('Frontend Routing', function () {
                 return testUtils.insertPosts();
             }).then(function () {
                 return testUtils.insertMorePosts(22);
-            }).then(function() {
+            }).then(function () {
                 return testUtils.insertMorePostsTags(22);
             }).then(function () {
                 done();
-            }).then(null, done);
+            }).catch(done);
 
         });
 

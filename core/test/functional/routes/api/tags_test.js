@@ -43,7 +43,7 @@ describe('Tag API', function () {
                             pattern_meta.should.exist;
                             csrfToken = res.text.match(pattern_meta)[1];
 
-                            setTimeout(function () {
+                            process.nextTick(function() {
                                 request.post('/ghost/signin/')
                                     .set('X-CSRF-Token', csrfToken)
                                     .send({email: user.email, password: user.password})
@@ -67,11 +67,10 @@ describe('Tag API', function () {
                                             });
                                     });
 
-                            }, 2000);
-
+                            });
                         });
-                }, done);
-        }).otherwise(function (e) {
+                }).catch(done);
+        }).catch(function (e) {
             console.log('Ghost Error: ', e);
             console.log(e.stack);
         });
@@ -93,8 +92,9 @@ describe('Tag API', function () {
                 res.should.be.json;
                 var jsonResponse = res.body;
                 jsonResponse.should.exist;
-                jsonResponse.should.have.length(6);
-                testUtils.API.checkResponse(jsonResponse[0], 'tag');
+                jsonResponse.tags.should.exist;
+                jsonResponse.tags.should.have.length(6);
+                testUtils.API.checkResponse(jsonResponse.tags[0], 'tag');
                 done();
             });
     });

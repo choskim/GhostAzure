@@ -40,13 +40,15 @@ describe('Frontend Controller', function () {
             };
 
             sandbox.stub(api.posts, 'browse', function () {
-                return when({posts: {}, pages: 3});
+                return when({posts: {}, meta: {pagination: { pages: 3}}});
             });
 
             apiSettingsStub = sandbox.stub(api.settings, 'read');
             apiSettingsStub.withArgs('postsPerPage').returns(when({
-                'key': 'postsPerPage',
-                'value': 6
+                settings: [{
+                    'key': 'postsPerPage',
+                    'value': 6
+                }]
             }));
         });
 
@@ -122,7 +124,7 @@ describe('Frontend Controller', function () {
                 res.redirect.calledWith('/page/3/').should.be.true;
                 res.render.called.should.be.false;
                 done();
-            });
+            }).catch(done);
         });
 
         it('Redirects to last page if page number too big with subdirectory', function (done) {
@@ -139,7 +141,7 @@ describe('Frontend Controller', function () {
                 res.redirect.calledWith('/blog/page/3/').should.be.true;
                 res.render.called.should.be.false;
                 done();
-            });
+            }).catch(done);
 
         });
     });
@@ -179,29 +181,39 @@ describe('Frontend Controller', function () {
                     done(new Error(msg));
                 };
             };
- 
+
         beforeEach(function () {
             sandbox.stub(api.posts, 'browse', function (args) {
                 return when({
-                  posts: mockPosts,
-                  page: 1,
-                  pages: 1,
-                  aspect: {tag: mockTags[0]}
+                    posts: mockPosts,
+                    meta: {
+                        pagination: {
+                            page: 1,
+                            pages: 1
+                        },
+                        filters: {
+                            tags: [mockTags[0]]
+                        }
+                    }
                 });
             });
- 
+
             apiSettingsStub = sandbox.stub(api.settings, 'read');
- 
-            apiSettingsStub.withArgs('activeTheme').returns(when({
-                'key': 'activeTheme',
-                'value': 'casper'
+
+            apiSettingsStub.withArgs(sinon.match.has('key', 'activeTheme')).returns(when({
+                settings: [{
+                    'key': 'activeTheme',
+                    'value': 'casper'
+                }]
             }));
- 
+
             apiSettingsStub.withArgs('postsPerPage').returns(when({
-                'key': 'postsPerPage',
-                'value': '10'
+                settings: [{
+                    'key': 'postsPerPage',
+                    'value': '10'
+                }]
             }));
- 
+
             frontend.__set__('config',  sandbox.stub().returns({
                 'paths': {
                     'subdir': '',
@@ -217,15 +229,18 @@ describe('Frontend Controller', function () {
                 }
             }));
         });
-        
+
         describe('custom tag template', function () {
- 
+
             beforeEach(function () {
                 apiSettingsStub.withArgs('permalinks').returns(when({
-                    value: '/tag/:slug/'
+                    settings: [{
+                        key: 'permalinks',
+                        value: '/tag/:slug/'
+                    }]
                 }));
             });
- 
+
             it('it will render custom tag template if it exists', function (done) {
                 var req = {
                         path: '/tag/' + mockTags[0].slug,
@@ -238,7 +253,7 @@ describe('Frontend Controller', function () {
                             done();
                         }
                     };
- 
+
                 frontend.tag(req, res, failTest(done));
             });
         });
@@ -254,13 +269,15 @@ describe('Frontend Controller', function () {
             };
 
             sandbox.stub(api.posts, 'browse', function () {
-                return when({posts: {}, pages: 3});
+                return when({posts: {}, meta: {pagination: { pages: 3}}});
             });
 
             apiSettingsStub = sandbox.stub(api.settings, 'read');
             apiSettingsStub.withArgs('postsPerPage').returns(when({
-                'key': 'postsPerPage',
-                'value': 6
+                settings: [{
+                    'key': 'postsPerPage',
+                    'value': 6
+                }]
             }));
         });
 
@@ -336,7 +353,7 @@ describe('Frontend Controller', function () {
                 res.redirect.calledWith('/tag/pumpkin/page/3/').should.be.true;
                 res.render.called.should.be.false;
                 done();
-            });
+            }).catch(done);
         });
 
         it('Redirects to last page if page number too big with subdirectory', function (done) {
@@ -353,7 +370,7 @@ describe('Frontend Controller', function () {
                 res.redirect.calledWith('/blog/tag/pumpkin/page/3/').should.be.true;
                 res.render.called.should.be.false;
                 done();
-            });
+            }).catch(done);
 
         });
     });
@@ -408,9 +425,11 @@ describe('Frontend Controller', function () {
 
             apiSettingsStub = sandbox.stub(api.settings, 'read');
 
-            apiSettingsStub.withArgs('activeTheme').returns(when({
-                'key': 'activeTheme',
-                'value': 'casper'
+            apiSettingsStub.withArgs(sinon.match.has('key', 'activeTheme')).returns(when({
+                settings: [{
+                    'key': 'activeTheme',
+                    'value': 'casper'
+                }]
             }));
 
             frontend.__set__('config',  sandbox.stub().returns({
@@ -435,7 +454,9 @@ describe('Frontend Controller', function () {
             describe('custom page templates', function () {
                 beforeEach(function () {
                     apiSettingsStub.withArgs('permalinks').returns(when({
-                        value: '/:slug/'
+                        settings: [{
+                            value: '/:slug/'
+                        }]
                     }));
                 });
 
@@ -457,7 +478,9 @@ describe('Frontend Controller', function () {
             describe('permalink set to slug', function () {
                 beforeEach(function () {
                     apiSettingsStub.withArgs('permalinks').returns(when({
-                        value: '/:slug/'
+                        settings: [{
+                            value: '/:slug/'
+                        }]
                     }));
                 });
 
@@ -526,7 +549,9 @@ describe('Frontend Controller', function () {
             describe('permalink set to date', function () {
                 beforeEach(function () {
                     apiSettingsStub.withArgs('permalinks').returns(when({
-                        value: '/:year/:month/:day/:slug/'
+                        settings: [{
+                            value: '/:year/:month/:day/:slug/'
+                        }]
                     }));
                 });
 
@@ -597,7 +622,9 @@ describe('Frontend Controller', function () {
             describe('permalink set to slug', function () {
                 beforeEach(function () {
                     apiSettingsStub.withArgs('permalinks').returns(when({
-                        value: '/:slug'
+                        settings: [{
+                            value: '/:slug'
+                        }]
                     }));
                 });
 
@@ -668,7 +695,9 @@ describe('Frontend Controller', function () {
             describe('permalink set to date', function () {
                 beforeEach(function () {
                     apiSettingsStub.withArgs('permalinks').returns(when({
-                        value: '/:year/:month/:day/:slug'
+                        settings: [{
+                            value: '/:year/:month/:day/:slug'
+                        }]
                     }));
                 });
 
@@ -756,7 +785,9 @@ describe('Frontend Controller', function () {
             describe('permalink set to custom format', function () {
                 beforeEach(function () {
                     apiSettingsStub.withArgs('permalinks').returns(when({
-                        value: '/:year/:slug'
+                        settings: [{
+                            value: '/:year/:slug'
+                        }]
                     }));
                 });
 
@@ -878,23 +909,29 @@ describe('Frontend Controller', function () {
             };
 
             sandbox.stub(api.posts, 'browse', function () {
-                return when({posts: {}, pages: 3});
+                return when({posts: {}, meta: {pagination: { pages: 3}}});
             });
 
             apiUsersStub = sandbox.stub(api.users, 'read').returns(when({}));
 
             apiSettingsStub = sandbox.stub(api.settings, 'read');
             apiSettingsStub.withArgs('title').returns(when({
-                'key': 'title',
-                'value': 'Test'
+                settings: [{
+                    'key': 'title',
+                    'value': 'Test'
+                }]
             }));
             apiSettingsStub.withArgs('description').returns(when({
-                'key': 'description',
-                'value': 'Some Text'
+                settings: [{
+                    'key': 'description',
+                    'value': 'Some Text'
+                }]
             }));
             apiSettingsStub.withArgs('permalinks').returns(when({
-                'key': 'permalinks',
-                'value': '/:slug/'
+                settings: [{
+                    'key': 'permalinks',
+                    'value': '/:slug/'
+                }]
             }));
         });
 
@@ -962,7 +999,7 @@ describe('Frontend Controller', function () {
                 res.redirect.calledWith('/rss/3/').should.be.true;
                 res.render.called.should.be.false;
                 done();
-            });
+            }).catch(done);
         });
 
         it('Redirects to last page if page number too big with subdirectory', function (done) {
@@ -975,7 +1012,7 @@ describe('Frontend Controller', function () {
                 res.redirect.calledWith('/blog/rss/3/').should.be.true;
                 res.render.called.should.be.false;
                 done();
-            });
+            }).catch(done);
 
         });
     });

@@ -13,6 +13,7 @@ var request    = require('supertest'),
     testUtils  = require('../../utils'),
     ghost      = require('../../../../core'),
     httpServer,
+    agent      = request.agent,
 
     ONE_HOUR_S = 60 * 60,
     ONE_YEAR_S = 365 * 24 * ONE_HOUR_S,
@@ -66,7 +67,7 @@ describe('Admin Routing', function () {
                 return testUtils.initData();
             }).then(function () {
                 done();
-            }, done);
+            }).catch(done);
         }).otherwise(function (e) {
             console.log('Ghost Error: ', e);
             console.log(e.stack);
@@ -111,6 +112,80 @@ describe('Admin Routing', function () {
                 .end(doEndNoAuth(done));
         });
     });
+    
+    // we'll use X-Forwarded-Proto: https to simulate an 'https://' request behind a proxy
+    describe('Require HTTPS - no redirect', function() {
+        var forkedGhost, request;
+        before(function (done) {
+            var configTestHttps = testUtils.fork.config();
+            configTestHttps.forceAdminSSL = {redirect: false};
+            configTestHttps.urlSSL = 'https://localhost/';
+
+            testUtils.fork.ghost(configTestHttps, 'testhttps')
+                .then(function(child) {
+                    forkedGhost = child;
+                    request = require('supertest');
+                    request = request(configTestHttps.url.replace(/\/$/, ''));
+                }).then(done)
+                .catch(done);
+        });
+        
+        after(function (done) {
+            if (forkedGhost) {
+                forkedGhost.kill(done);
+            }
+        });
+        
+        it('should block admin access over non-HTTPS', function(done) {
+            request.get('/ghost/')
+                .expect(403)
+                .end(done);
+        });
+
+        it('should allow admin access over HTTPS', function(done) {
+            request.get('/ghost/signup/')
+                .set('X-Forwarded-Proto', 'https')
+                .expect(200)
+                .end(doEnd(done));
+        });
+    });    
+
+    describe('Require HTTPS - redirect', function() {
+        var forkedGhost, request;
+        before(function (done) {
+            var configTestHttps = testUtils.fork.config();
+            configTestHttps.forceAdminSSL = {redirect: true};
+            configTestHttps.urlSSL = 'https://localhost/';
+
+            testUtils.fork.ghost(configTestHttps, 'testhttps')
+                .then(function(child) {
+                    forkedGhost = child;
+                    request = require('supertest');
+                    request = request(configTestHttps.url.replace(/\/$/, ''));
+                }).then(done)
+                .catch(done);
+        });
+        
+        after(function (done) {
+            if (forkedGhost) {
+                forkedGhost.kill(done);
+            }
+        });
+        
+        it('should redirect admin access over non-HTTPS', function(done) {
+            request.get('/ghost/')
+                .expect('Location', /^https:\/\/localhost\/ghost\//)
+                .expect(301)
+                .end(done);
+        });
+
+        it('should allow admin access over HTTPS', function(done) {
+            request.get('/ghost/signup/')
+                .set('X-Forwarded-Proto', 'https')
+                .expect(200)
+                .end(done);
+        });
+    });    
 
     describe('Ghost Admin Signup', function () {
         it('should have a session cookie which expires in 12 hours', function (done) {
@@ -206,6 +281,91 @@ describe('Admin Routing', function () {
                 .expect('Cache-Control', cacheRules['private'])
                 .expect(302)
                 .end(doEnd(done));
+        });
+    });
+});
+
+describe('Authenticated Admin Routing', function () {
+    var user = testUtils.DataGenerator.forModel.users[0],
+        csrfToken = '';
+
+    before(function (done) {
+        var app = express();
+
+        ghost({app: app}).then(function (_httpServer) {
+            httpServer = _httpServer;
+            request = agent(app);
+
+            testUtils.clearData()
+                .then(function () {
+                    return testUtils.initData();
+                })
+                .then(function () {
+                    return testUtils.insertDefaultFixtures();
+                })
+                .then(function () {
+
+                    request.get('/ghost/signin/')
+                        .expect(200)
+                        .end(function (err, res) {
+                            if (err) {
+                                return done(err);
+                            }
+
+                            var pattern_meta = /<meta.*?name="csrf-param".*?content="(.*?)".*?>/i;
+                            pattern_meta.should.exist;
+                            csrfToken = res.text.match(pattern_meta)[1];
+
+                            process.nextTick(function() {
+                                request.post('/ghost/signin/')
+                                    .set('X-CSRF-Token', csrfToken)
+                                    .send({email: user.email, password: user.password})
+                                    .expect(200)
+                                    .end(function (err, res) {
+                                        if (err) {
+                                            return done(err);
+                                        }
+
+                                        request.saveCookies(res);
+                                        request.get('/ghost/')
+                                            .expect(200)
+                                            .end(function (err, res) {
+                                                if (err) {
+                                                    return done(err);
+                                                }
+
+                                                csrfToken = res.text.match(pattern_meta)[1];
+                                                done();
+                                            });
+                                    });
+
+                            });
+
+                        });
+                }).catch(done);
+        }).otherwise(function (e) {
+            console.log('Ghost Error: ', e);
+            console.log(e.stack);
+        });
+    });
+
+    after(function () {
+        httpServer.close();
+    });
+
+    describe('Ghost Admin magic /view/ route', function () {
+
+        it('should redirect to the single post page on the frontend', function (done) {
+            request.get('/ghost/editor/1/view/')
+                .expect(302)
+                .expect('Location', '/welcome-to-ghost/')
+                .end(function (err, res) {
+                    if (err) {
+                        return done(err);
+                    }
+
+                    done();
+                });
         });
     });
 });

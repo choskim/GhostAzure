@@ -16,7 +16,7 @@ describe('Post Model', function () {
     before(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     beforeEach(function (done) {
@@ -26,94 +26,140 @@ describe('Post Model', function () {
             })
             .then(function () {
                 done();
-            }, done);
+            }).catch(done);
     });
 
     afterEach(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
-    it('can browse', function (done) {
-        PostModel.browse().then(function (results) {
+    function checkFirstPostData(firstPost) {
+        should.not.exist(firstPost.author_id);
+        firstPost.author.should.be.an.Object;
+        firstPost.fields.should.be.an.Array;
+        firstPost.tags.should.be.an.Array;
+        firstPost.author.name.should.equal(DataGenerator.Content.users[0].name);
+        firstPost.fields[0].key.should.equal(DataGenerator.Content.app_fields[0].key);
+        firstPost.created_by.should.be.an.Object;
+        firstPost.updated_by.should.be.an.Object;
+        firstPost.published_by.should.be.an.Object;
+        firstPost.created_by.name.should.equal(DataGenerator.Content.users[0].name);
+        firstPost.updated_by.name.should.equal(DataGenerator.Content.users[0].name);
+        firstPost.published_by.name.should.equal(DataGenerator.Content.users[0].name);
+        firstPost.tags[0].name.should.equal('Getting Started');
+    }
+
+    it('can findAll', function (done) {
+        PostModel.findAll().then(function (results) {
             should.exist(results);
             results.length.should.be.above(1);
 
-            // should be in published_at, DESC order
-            // model and API differ here - need to fix
-            //results.models[0].attributes.published_at.should.be.above(results.models[1].attributes.published_at);
-
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
-    it('can read', function (done) {
+    it('can findAll, returning all related data', function (done) {
         var firstPost;
 
-        PostModel.browse().then(function (results) {
-            should.exist(results);
-            results.length.should.be.above(0);
-            firstPost = results.models[0];
+        PostModel.findAll({include: ['author_id', 'fields', 'tags', 'created_by', 'updated_by', 'published_by']})
+            .then(function (results) {
+                should.exist(results);
+                results.length.should.be.above(0);
+                firstPost = results.models[0].toJSON();
 
-            return PostModel.read({slug: firstPost.attributes.slug});
+                checkFirstPostData(firstPost);
+
+                done();
+            }).catch(done);
+    });
+
+    it('can findPage (default)', function (done) {
+        PostModel.findPage().then(function (results) {
+            should.exist(results);
+
+            results.meta.pagination.page.should.equal(1);
+            results.meta.pagination.limit.should.equal(15);
+            results.meta.pagination.pages.should.equal(1);
+            results.posts.length.should.equal(5);
+
+            done();
+        }).catch(done);
+    });
+
+    it('can findPage, returning all related data', function (done) {
+        var firstPost;
+
+        PostModel.findPage({include: ['author_id', 'fields', 'tags', 'created_by', 'updated_by', 'published_by']})
+            .then(function (results) {
+                should.exist(results);
+
+                results.meta.pagination.page.should.equal(1);
+                results.meta.pagination.limit.should.equal(15);
+                results.meta.pagination.pages.should.equal(1);
+                results.posts.length.should.equal(5);
+
+                firstPost = results.posts[0];
+
+                checkFirstPostData(firstPost);
+
+                done();
+            }).catch(done);
+    });
+
+
+    it('can findOne', function (done) {
+        var firstPost;
+
+        PostModel.findPage().then(function (results) {
+            should.exist(results);
+            should.exist(results.posts);
+            results.posts.length.should.be.above(0);
+            firstPost = results.posts[0];
+
+            return PostModel.findOne({slug: firstPost.slug});
         }).then(function (found) {
             should.exist(found);
-            found.attributes.title.should.equal(firstPost.attributes.title);
+            found.attributes.title.should.equal(firstPost.title);
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
-    it('can findAll, returning author, user and field data', function (done) {
+    it('can findOne, returning all related data', function (done) {
         var firstPost;
+        // TODO: should take author :-/
+        PostModel.findOne({}, {include: ['author_id', 'fields', 'tags', 'created_by', 'updated_by', 'published_by']})
+            .then(function (result) {
+                should.exist(result);
+                firstPost = result.toJSON();
 
-        PostModel.findAll({}).then(function (results) {
-            should.exist(results);
-            results.length.should.be.above(0);
-            firstPost = results.models[0].toJSON();
+                checkFirstPostData(firstPost);
 
-            firstPost.author.should.be.an.Object;
-            firstPost.fields.should.be.an.Array;
-            firstPost.author.name.should.equal(DataGenerator.Content.users[0].name);
-            firstPost.fields[0].key.should.equal(DataGenerator.Content.app_fields[0].key);
-
-            done();
-        }, done);
-    });
-
-    it('can findOne, returning author, user and field data', function (done) {
-        var firstPost;
-
-        PostModel.findOne({}).then(function (result) {
-            should.exist(result);
-            firstPost = result.toJSON();
-
-            firstPost.author.should.be.an.Object;
-            firstPost.fields.should.be.an.Array;
-            firstPost.author.name.should.equal(testUtils.DataGenerator.Content.users[0].name);
-            firstPost.fields[0].key.should.equal(DataGenerator.Content.app_fields[0].key);
-
-            done();
-        }, done);
+                done();
+            }).catch(done);
     });
 
     it('can edit', function (done) {
-        var firstPost;
+        var firstPost = 1;
 
-        PostModel.browse().then(function (results) {
+        PostModel.findOne({id: firstPost}).then(function (results) {
+            var post;
             should.exist(results);
-            results.length.should.be.above(0);
-            firstPost = results.models[0];
+            post = results.toJSON();
+            post.id.should.equal(firstPost);
+            post.title.should.not.equal('new title');
 
-            return PostModel.edit({id: firstPost.id, title: 'new title'});
+            return PostModel.edit({title: 'new title'}, {id: firstPost});
         }).then(function (edited) {
             should.exist(edited);
             edited.attributes.title.should.equal('new title');
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
+
 
     it('can add, defaults are all correct', function (done) {
         var createdPostUpdatedDate,
@@ -142,6 +188,7 @@ describe('Post Model', function () {
             createdPost.get('created_at').should.be.above(new Date(0).getTime());
             createdPost.get('created_by').should.equal(1);
             createdPost.get('author_id').should.equal(1);
+            createdPost.has('author').should.equal(false);
             createdPost.get('created_by').should.equal(createdPost.get('author_id'));
             createdPost.get('updated_at').should.be.above(new Date(0).getTime());
             createdPost.get('updated_by').should.equal(1);
@@ -160,7 +207,7 @@ describe('Post Model', function () {
             publishedPost.get('updated_at').should.not.equal(createdPostUpdatedDate);
 
             done();
-        }).then(null, done);
+        }).catch(done);
 
     });
 
@@ -179,7 +226,7 @@ describe('Post Model', function () {
 
             done();
 
-        }).otherwise(done);
+        }).catch(done);
     });
 
     it('can trim title', function (done) {
@@ -201,7 +248,7 @@ describe('Post Model', function () {
             updatedPost.get('title').should.equal(untrimmedUpdateTitle.trim());
 
             done();
-        }).otherwise(done);
+        }).catch(done);
     });
 
     it('can generate a non conflicting slug', function (done) {
@@ -237,7 +284,7 @@ describe('Post Model', function () {
             });
 
             done();
-        }).otherwise(done);
+        }).catch(done);
     });
 
     it('can generate slugs without duplicate hyphens', function (done) {
@@ -251,7 +298,7 @@ describe('Post Model', function () {
             createdPost.get('slug').should.equal('apprehensive-titles-have-too-many-spaces-and-m-dashes-and-also-n-dashes');
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
     it('can generate a safe slug when a reserved keyword is used', function(done) {
@@ -275,7 +322,7 @@ describe('Post Model', function () {
         PostModel.add(newPost, {user: 1}).then(function (createdPost) {
             createdPost.get('slug').should.equal('bhute-dhddkii-bhrvnnaaraa-aahet');
             done();
-        });
+        }).catch(done);
     });
 
     it('detects duplicate slugs before saving', function (done) {
@@ -311,7 +358,7 @@ describe('Post Model', function () {
                 // Should not have a conflicted slug from the first
                 updatedSecondPost.get('slug').should.not.equal(firstPost.slug);
 
-                return PostModel.read({
+                return PostModel.findOne({
                     id: updatedSecondPost.id,
                     status: 'all'
                 });
@@ -323,108 +370,132 @@ describe('Post Model', function () {
                 foundPost.get('slug').should.not.equal(firstPost.slug);
 
                 done();
-            }).otherwise(done);
+            }).catch(done);
     });
 
-    it('can delete', function (done) {
-        var firstPostId;
-        PostModel.browse().then(function (results) {
+    it('can destroy', function (done) {
+        // We're going to try deleting post id 1 which also has tag id 1
+        var firstItemData = {id: 1};
+
+        // Test that we have the post we expect, with exactly one tag
+        PostModel.findOne(firstItemData).then(function (results) {
+            var post;
             should.exist(results);
-            results.length.should.be.above(0);
-            firstPostId = results.models[0].id;
+            post = results.toJSON();
+            post.id.should.equal(firstItemData.id);
+            post.tags.should.have.length(1);
+            post.tags[0].should.equal(firstItemData.id);
 
-            return PostModel.destroy(firstPostId);
-        }).then(function () {
-            return PostModel.browse();
+            // Destroy the post
+            return PostModel.destroy(firstItemData);
+        }).then(function (response) {
+            var deleted = response.toJSON();
+
+            deleted.tags.should.be.empty;
+            should.equal(deleted.author, undefined);
+
+            // Double check we can't find the post again
+            return PostModel.findOne(firstItemData);
         }).then(function (newResults) {
-            var ids, hasDeletedId;
-
-            ids = _.pluck(newResults.models, 'id');
-            hasDeletedId = _.any(ids, function (id) {
-                return id === firstPostId;
-            });
-            hasDeletedId.should.equal(false);
+            should.equal(newResults, null);
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
-    it('can fetch a paginated set, with various options', function (done) {
+    it('can findPage, with various options', function (done) {
         testUtils.insertMorePosts().then(function () {
 
             return testUtils.insertMorePostsTags();
         }).then(function () {
             return PostModel.findPage({page: 2});
         }).then(function (paginationResult) {
-            paginationResult.page.should.equal(2);
-            paginationResult.limit.should.equal(15);
+            paginationResult.meta.pagination.page.should.equal(2);
+            paginationResult.meta.pagination.limit.should.equal(15);
+            paginationResult.meta.pagination.pages.should.equal(4);
             paginationResult.posts.length.should.equal(15);
-            paginationResult.pages.should.equal(4);
 
             return PostModel.findPage({page: 5});
         }).then(function (paginationResult) {
-            paginationResult.page.should.equal(5);
-            paginationResult.limit.should.equal(15);
+            paginationResult.meta.pagination.page.should.equal(5);
+            paginationResult.meta.pagination.limit.should.equal(15);
+            paginationResult.meta.pagination.pages.should.equal(4);
             paginationResult.posts.length.should.equal(0);
-            paginationResult.pages.should.equal(4);
 
             return PostModel.findPage({limit: 30});
         }).then(function (paginationResult) {
-            paginationResult.page.should.equal(1);
-            paginationResult.limit.should.equal(30);
+            paginationResult.meta.pagination.page.should.equal(1);
+            paginationResult.meta.pagination.limit.should.equal(30);
+            paginationResult.meta.pagination.pages.should.equal(2);
             paginationResult.posts.length.should.equal(30);
-            paginationResult.pages.should.equal(2);
 
+            // Test both boolean formats
             return PostModel.findPage({limit: 10, staticPages: true});
         }).then(function (paginationResult) {
-            paginationResult.page.should.equal(1);
-            paginationResult.limit.should.equal(10);
+            paginationResult.meta.pagination.page.should.equal(1);
+            paginationResult.meta.pagination.limit.should.equal(10);
+            paginationResult.meta.pagination.pages.should.equal(1);
             paginationResult.posts.length.should.equal(1);
-            paginationResult.pages.should.equal(1);
+
+            // Test both boolean formats
+            return PostModel.findPage({limit: 10, staticPages: '1'});
+        }).then(function (paginationResult) {
+            paginationResult.meta.pagination.page.should.equal(1);
+            paginationResult.meta.pagination.limit.should.equal(10);
+            paginationResult.meta.pagination.pages.should.equal(1);
+            paginationResult.posts.length.should.equal(1);
 
             return PostModel.findPage({limit: 10, page: 2, status: 'all'});
         }).then(function (paginationResult) {
-            paginationResult.pages.should.equal(11);
+            paginationResult.meta.pagination.pages.should.equal(11);
 
+            done();
+        }).catch(done);
+    });
+    it('can findPage for tag, with various options', function (done) {
+        testUtils.insertMorePosts().then(function () {
+
+            return testUtils.insertMorePostsTags();
+        }).then(function () {
             // Test tag filter
             return PostModel.findPage({page: 1, tag: 'bacon'});
         }).then(function (paginationResult) {
-            paginationResult.page.should.equal(1);
-            paginationResult.limit.should.equal(15);
+            paginationResult.meta.pagination.page.should.equal(1);
+            paginationResult.meta.pagination.limit.should.equal(15);
+            paginationResult.meta.pagination.pages.should.equal(1);
+            paginationResult.meta.filters.tags[0].name.should.equal('bacon');
+            paginationResult.meta.filters.tags[0].slug.should.equal('bacon');
             paginationResult.posts.length.should.equal(2);
-            paginationResult.pages.should.equal(1);
-            paginationResult.aspect.tag.name.should.equal('bacon');
-            paginationResult.aspect.tag.slug.should.equal('bacon');
 
             return PostModel.findPage({page: 1, tag: 'kitchen-sink'});
         }).then(function (paginationResult) {
-            paginationResult.page.should.equal(1);
-            paginationResult.limit.should.equal(15);
+            paginationResult.meta.pagination.page.should.equal(1);
+            paginationResult.meta.pagination.limit.should.equal(15);
+            paginationResult.meta.pagination.pages.should.equal(1);
+            paginationResult.meta.filters.tags[0].name.should.equal('kitchen sink');
+            paginationResult.meta.filters.tags[0].slug.should.equal('kitchen-sink');
             paginationResult.posts.length.should.equal(2);
-            paginationResult.pages.should.equal(1);
-            paginationResult.aspect.tag.name.should.equal('kitchen sink');
-            paginationResult.aspect.tag.slug.should.equal('kitchen-sink');
 
             return PostModel.findPage({page: 1, tag: 'injection'});
         }).then(function (paginationResult) {
-            paginationResult.page.should.equal(1);
-            paginationResult.limit.should.equal(15);
+            paginationResult.meta.pagination.page.should.equal(1);
+            paginationResult.meta.pagination.limit.should.equal(15);
+            paginationResult.meta.pagination.pages.should.equal(2);
+            paginationResult.meta.filters.tags[0].name.should.equal('injection');
+            paginationResult.meta.filters.tags[0].slug.should.equal('injection');
             paginationResult.posts.length.should.equal(15);
-            paginationResult.pages.should.equal(2);
-            paginationResult.aspect.tag.name.should.equal('injection');
-            paginationResult.aspect.tag.slug.should.equal('injection');
 
             return PostModel.findPage({page: 2, tag: 'injection'});
         }).then(function (paginationResult) {
-            paginationResult.page.should.equal(2);
-            paginationResult.limit.should.equal(15);
+            paginationResult.meta.pagination.page.should.equal(2);
+            paginationResult.meta.pagination.limit.should.equal(15);
+            paginationResult.meta.pagination.pages.should.equal(2);
+            paginationResult.meta.filters.tags[0].name.should.equal('injection');
+            paginationResult.meta.filters.tags[0].slug.should.equal('injection');
             paginationResult.posts.length.should.equal(11);
-            paginationResult.pages.should.equal(2);
-            paginationResult.aspect.tag.name.should.equal('injection');
-            paginationResult.aspect.tag.slug.should.equal('injection');
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
     // disabling sanitization until we can implement a better version

@@ -11,7 +11,7 @@ describe('Tags API', function () {
     before(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     beforeEach(function (done) {
@@ -21,21 +21,22 @@ describe('Tags API', function () {
             })
             .then(function () {
                 done();
-            }, done);
+            }).catch(done);
     });
 
     afterEach(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     it('can browse', function (done) {
         TagsAPI.browse().then(function (results) {
             should.exist(results);
-            results.length.should.be.above(0);
-            testUtils.API.checkResponse(results[0], 'tag');
+            should.exist(results.tags);
+            results.tags.length.should.be.above(0);
+            testUtils.API.checkResponse(results.tags[0], 'tag');
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 });

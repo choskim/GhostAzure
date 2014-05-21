@@ -1,7 +1,13 @@
 var when   = require('when'),
     _      = require('lodash'),
     models = require('../../models'),
-    Importer000;
+    Importer000,
+    updatedSettingKeys;
+
+updatedSettingKeys = {
+    activePlugins: 'activeApps',
+    installedPlugins: 'installedApps'
+};
 
 
 Importer000 = function () {
@@ -106,7 +112,7 @@ function importUsers(ops, tableData, transaction) {
     // don't override the users credentials
     tableData = stripProperties(['id', 'email', 'password'], tableData);
     tableData[0].id = 1;
-    ops.push(models.User.edit(tableData[0], {user: 1, transacting: transaction})
+    ops.push(models.User.edit(tableData[0], {id: 1, user: 1, transacting: transaction})
         // add pass-through error handling so that bluebird doesn't think we've dropped it
         .otherwise(function (error) { return when.reject(error); }));
 }
@@ -121,6 +127,12 @@ function importSettings(ops, tableData, transaction) {
     tableData = _.filter(tableData, function (data) {
         return blackList.indexOf(data.type) === -1;
     });
+
+    // Clean up legacy plugin setting references
+    _.each(tableData, function (datum) {
+        datum.key = updatedSettingKeys[datum.key] || datum.key;
+    });
+
     ops.push(models.Settings.edit(tableData, {user: 1, transacting: transaction})
          // add pass-through error handling so that bluebird doesn't think we've dropped it
          .otherwise(function (error) { return when.reject(error); }));
@@ -145,9 +157,9 @@ function importApps(ops, tableData, transaction) {
 //     var appsData = tableData.apps,
 //         appSettingsData = tableData.app_settings,
 //         appName;
-// 
+//
 //     appSettingsData = stripProperties(['id'], appSettingsData);
-// 
+//
 //     _.each(appSettingsData, function (appSetting) {
 //         // Find app to attach settings to
 //         appName = _.find(appsData, function (app) {
@@ -220,30 +232,25 @@ Importer000.prototype.basicImport = function (data) {
         // Write changes to DB, if successful commit, otherwise rollback
         // when.all() does not work as expected, when.settle() does.
         when.settle(ops).then(function (descriptors) {
-            var rej = false,
-                error = '';
+            var errors = [];
+
             descriptors.forEach(function (d) {
                 if (d.state === 'rejected') {
-                    error += _.isEmpty(error) ? '' : '</br>';
-                    if (!_.isEmpty(d.reason.clientError)) {
-                        error += d.reason.clientError;
-                    } else if (!_.isEmpty(d.reason.message)) {
-                        error += d.reason.message;
-                    }
-                    rej = true;
+                    errors = errors.concat(d.reason);
                 }
             });
-            if (!rej) {
+
+            if (errors.length === 0) {
                 t.commit();
             } else {
-                t.rollback(error);
+                t.rollback(errors);
             }
         });
     }).then(function () {
         //TODO: could return statistics of imported items
         return when.resolve();
     }, function (error) {
-        return when.reject("Error importing data: " + error);
+        return when.reject(error);
     });
 };
 

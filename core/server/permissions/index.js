@@ -18,7 +18,7 @@ function hasActionsMap() {
 
     return _.any(exported.actionsMap, function (val, key) {
         /*jslint unparam:true*/
-        return Object.hasOwnProperty(key);
+        return Object.hasOwnProperty.call(exported.actionsMap, key);
     });
 }
 
@@ -30,21 +30,16 @@ function parseContext(context) {
             user: null,
             app: null
         };
-    
+
     if (context && (context === 'internal' || context.internal)) {
         parsed.internal = true;
     }
 
-    // @TODO: Refactor canThis() references to pass { user: id } explicitly instead of primitives.
-    if (context && context.id) {
-        // Handle passing of just user.id string
-        parsed.user = context.id;
-    } else if (_.isNumber(context)) {
-        // Handle passing of just user id number
-        parsed.user = context;
-    } else if (_.isObject(context)) {
-        // Otherwise, use the new hotness { user: id, app: id } format
+    if (context && context.user) {
         parsed.user = context.user;
+    }
+
+    if (context && context.app) {
         parsed.app = context.app;
     }
 
@@ -120,16 +115,14 @@ CanThisResult.prototype.buildObjectTypeHandlers = function (obj_types, act_type,
                     hasAppPermission = _.any(appPermissions, checkPermission);
                 }
 
+                // Offer a chance for the TargetModel to override the results
+                if (TargetModel && _.isFunction(TargetModel.permissable)) {
+                    return TargetModel.permissable(modelId, context, loadedPermissions, hasUserPermission, hasAppPermission);
+                }
+
                 if (hasUserPermission && hasAppPermission) {
                     return when.resolve();
                 }
-                return when.reject();
-            }).otherwise(function () {
-                // Check for special permissions on the model directly
-                if (TargetModel && _.isFunction(TargetModel.permissable)) {
-                    return TargetModel.permissable(modelId, context);
-                }
-
                 return when.reject();
             });
         };
@@ -158,7 +151,7 @@ CanThisResult.prototype.beginCheck = function (context) {
         // Resolve null if no context.user to prevent db call
         userPermissionLoad = when.resolve(null);
     }
-    
+
 
     // Kick off loading of effective app permissions if necessary
     if (context.app) {
@@ -204,7 +197,7 @@ canThis = function (context) {
 
 init = refresh = function () {
     // Load all the permissions
-    return PermissionsProvider.browse().then(function (perms) {
+    return PermissionsProvider.findAll().then(function (perms) {
         var seenActions = {};
 
         exported.actionsMap = {};

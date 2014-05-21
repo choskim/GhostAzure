@@ -1,12 +1,12 @@
 /*globals describe, it, before, beforeEach, afterEach */
 var testUtils = require('../../utils'),
     should = require('should'),
-    errors = require('../../../server/errorHandling'),
+    errors = require('../../../server/errors'),
 
     // Stuff we are testing
     Models = require('../../../server/models');
 
-describe("Permission Model", function () {
+describe('Permission Model', function () {
 
     var PermissionModel = Models.Permission;
 
@@ -15,23 +15,23 @@ describe("Permission Model", function () {
     before(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     beforeEach(function (done) {
         testUtils.initData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
     afterEach(function (done) {
         testUtils.clearData().then(function () {
             done();
-        }, done);
+        }).catch(done);
     });
 
-    it("can browse permissions", function (done) {
-        PermissionModel.browse().then(function (foundPermissions) {
+    it('can findAll', function (done) {
+        PermissionModel.findAll().then(function (foundPermissions) {
             should.exist(foundPermissions);
 
             foundPermissions.models.length.should.be.above(0);
@@ -40,33 +40,33 @@ describe("Permission Model", function () {
         }).then(null, done);
     });
 
-    it("can read permissions", function (done) {
-        PermissionModel.read({id: 1}).then(function (foundPermission) {
+    it('can findOne', function (done) {
+        PermissionModel.findOne({id: 1}).then(function (foundPermission) {
             should.exist(foundPermission);
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
-    it("can edit permissions", function (done) {
-        PermissionModel.read({id: 1}).then(function (foundPermission) {
+    it('can edit', function (done) {
+        PermissionModel.findOne({id: 1}).then(function (foundPermission) {
             should.exist(foundPermission);
 
             return foundPermission.set({name: "updated"}).save();
         }).then(function () {
-            return PermissionModel.read({id: 1});
+            return PermissionModel.findOne({id: 1});
         }).then(function (updatedPermission) {
             should.exist(updatedPermission);
 
             updatedPermission.get("name").should.equal("updated");
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
-    it("can add permissions", function (done) {
+    it('can add', function (done) {
         var newPerm = {
-            name: "testperm1",
+            name: 'testperm1',
             object_type: 'test',
             action_type: 'test'
         };
@@ -77,24 +77,24 @@ describe("Permission Model", function () {
             createdPerm.attributes.name.should.equal(newPerm.name);
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 
-    it("can delete permissions", function (done) {
-        PermissionModel.read({id: 1}).then(function (foundPermission) {
+    it('can destroy', function (done) {
+        var firstPermission = {id: 1};
+
+        PermissionModel.findOne(firstPermission).then(function (foundPermission) {
             should.exist(foundPermission);
+            foundPermission.attributes.id.should.equal(firstPermission.id);
 
-            return PermissionModel['delete'](1);
-        }).then(function () {
-            return PermissionModel.browse();
-        }).then(function (foundPermissions) {
-            var hasRemovedId = foundPermissions.any(function (permission) {
-                return permission.id === 1;
-            });
-
-            hasRemovedId.should.equal(false);
+            return PermissionModel.destroy(firstPermission);
+        }).then(function (response) {
+            response.toJSON().should.be.empty;
+            return PermissionModel.findOne(firstPermission);
+        }).then(function (newResults) {
+            should.equal(newResults, null);
 
             done();
-        }).then(null, done);
+        }).catch(done);
     });
 });
