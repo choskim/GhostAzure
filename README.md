@@ -29,8 +29,16 @@ This repository is configured to work with Microsoft Azure. To host Ghost on Azu
 1. TBA
 
 ## Outstanding Issues 
-When Microsoft Azure or Ghost update their codebase, an error may occur. If you see any outstanding issues in this repository, try to reset your repository and branch to the last working version of Ghost. Use the following code in your terminal, which contains the latest working commit: 
+When Microsoft Azure or Ghost update their codebase, an error may occur. If you see any outstanding issues in this repository do one of the following: 
+
+1. If you have deployed a working version of Ghost to Azure: 
+
+* Do not pull from this repository until all issues have been resolved. 
+
+2. If you haven't deployed a working version of Ghost to Azure:
+
+* Clone this repository and reset the current commit to the last commit that led to a successful deployment. Here's the code you should use, which includes the last working commit:  
 
 `$ git reset --hard 00cec6`
 
-If this doesn't work, wait for all issues to be resolved
+* If resetting leads to an unsuccessful deployment, wait for all issues to be resolved
