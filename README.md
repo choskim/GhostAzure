@@ -4,41 +4,15 @@ Ghost is a free, open, simple blogging platform that's available to anyone who w
 
 Visit the project's website at <http://ghost.org> &bull; docs on <http://docs.ghost.org>.
 
-View Ghost's official README.md here: <https://github.com/TryGhost/Ghost>
+# GhostAzure
 
-## This is a forked version of Ghost 
+This is a forked version of Ghost. To view Ghost's official README.md, visit this page: <https://github.com/TryGhost/Ghost>
 
 This repository is configured to work with Microsoft Azure. To host Ghost on Azure, follow the instructions on my blog post titled [How to Install Ghost on Microsoft Azure](http://www.choskim.me/how-to-install-ghost-on-microsoft-azure/)
 
-## Additional Features
+## Planned Features 
 
 1. Syntax Highlighting via [Prism](http://prismjs.com/)
 
- * Prism is currently installed for Ghost's default theme: Casper.
-
- * Syntax highlighting is invisible when editing a blog post. A post must be published and viewed from the non-editing page to display syntax highligthing. 
-
- * Wrap the following syntax around code blocks for syntax highlighting: 
-  
-<pre>``` langauge-[your language]
-  // code
-```</pre>
-
-## Planned Features 
-
-1. TBA
-
 ## Outstanding Issues 
-When Microsoft Azure or Ghost update their codebase, an error may occur. If you see any outstanding issues in this repository do one of the following: 
-
-1. If you have deployed a working version of Ghost to Azure: 
-
-* Do not pull from this repository until all issues have been resolved. 
-
-2. If you haven't deployed a working version of Ghost to Azure:
-
-* Clone this repository and reset the current commit to the last commit that led to a successful deployment. Here's the code you should use, which includes the last working commit:  
-
-`$ git reset --hard 00cec6`
-
-* If resetting leads to an unsuccessful deployment, wait for all issues to be resolved
+When Microsoft Azure or Ghost update their configuration or codebase, an error may occur during deploying. If you notice any outstanding issues in this repository, do not pull from it. Wait until all issues have been resolved.  
