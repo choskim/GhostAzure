@@ -1,15 +1,15 @@
-# [Ghost](https://github.com/TryGhost/Ghost) [![Build Status](https://travis-ci.org/TryGhost/Ghost.svg?branch=master)](https://travis-ci.org/TryGhost/Ghost)
-
-Ghost is a free, open, simple blogging platform that's available to anyone who wants to use it. Lovingly created and maintained by [John O'Nolan](http://twitter.com/JohnONolan) + [Hannah Wolfe](http://twitter.com/ErisDS) + an amazing group of [contributors](https://github.com/TryGhost/Ghost/contributors).
-
-Visit the project's website at <http://ghost.org> &bull; docs on <http://docs.ghost.org>.
-
 # GhostAzure
-This is a forked version of Ghost. To view Ghost's official README.md, visit this page: <https://github.com/TryGhost/Ghost>
+GhostAzure is a forked-version of [Ghost](https://github.com/TryGhost/Ghost). 
 
-This repository is configured to work with Microsoft Azure. To host Ghost on Azure, follow the instructions on my blog post titled [How to Install Ghost on Microsoft Azure](http://www.choskim.me/how-to-install-ghost-on-microsoft-azure/)
+This repository, moreover, is configured to work with Microsoft Azure (Azure). To host Ghost on Azure, follow the instructions on my blog post titled [How to Install Ghost on Microsoft Azure](http://www.choskim.me/how-to-install-ghost-on-microsoft-azure/)
 
 ## FAQs
+How often is GhostAzure updated?
+
+- I'll try to update this repository during the first weekend of every month. This decision will provide users some idea of when they could pull any changes. 
+
+- If Azure or Ghost change their configuration and those changes break any of the installation steps of GhostAzure, then I'll try to resolve this problem as-soon-as-possible.   
+
 How do I back-up my blog posts? 
 
 - In a brower's address bar, type the URL of your blog and add the path `ghost/debug`. Here's an example: 
