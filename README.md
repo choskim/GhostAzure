@@ -1,7 +1,7 @@
 # GhostAzure
 GhostAzure is a forked-version of [Ghost](https://github.com/TryGhost/Ghost). 
 
-This repository, moreover, is configured to work with Microsoft Azure (Azure). To host Ghost on Azure, follow the instructions on my blog post titled [How to Install Ghost on Microsoft Azure](http://www.choskim.me/how-to-install-ghost-on-microsoft-azure/)
+This repository, moreover, is configured to work with Microsoft Azure (Azure). To host Ghost on Azure, follow the instructions on my blog post titled [How to Install Ghost on Microsoft Azure](http://www.choskim.com/how-to-install-ghost-on-microsoft-azure/)
 
 ## FAQs
 How often is GhostAzure updated?
